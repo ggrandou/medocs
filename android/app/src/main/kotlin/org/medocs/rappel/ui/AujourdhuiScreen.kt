@@ -157,6 +157,7 @@ private fun CarteOccurrence(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(o.heure.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Vignette(l.medicament.photoPath, 56.dp)
                 Column {
                     Text(l.medicament.nom, style = MaterialTheme.typography.titleMedium)
                     Text(formaterAvecUnite(o.quantite, l.medicament.unite), style = MaterialTheme.typography.bodyMedium)

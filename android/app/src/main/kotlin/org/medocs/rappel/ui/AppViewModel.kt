@@ -24,6 +24,7 @@ import org.medocs.rappel.bdpm.Bdpm
 import org.medocs.rappel.bdpm.PresentationBdpm
 import org.medocs.rappel.bdpm.SpecialiteBdpm
 import org.medocs.rappel.data.AppDatabase
+import org.medocs.rappel.photos.Photos
 import org.medocs.rappel.data.Chiffrement
 import org.medocs.rappel.data.Medicament
 import org.medocs.rappel.data.MotDePasseIncorrect
@@ -95,6 +96,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             LigneMedicament(m, stock, projection, stockFaible(m, stock, projection))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Supprime les fichiers photo que plus aucun médicament n'utilise (photo remplacée, retirée ou abandonnée). */
+    private suspend fun nettoyerPhotos() = withContext(Dispatchers.IO) {
+        Photos.nettoyer(getApplication(), db.medicaments().tous().mapNotNull { it.photoPath }.toSet())
+    }
+
+    init { viewModelScope.launch { nettoyerPhotos() } }
 
     /** Recale l'alarme système après toute modification des données (plannings, prises, stock). */
     private suspend fun recaler() = Moteur.executer(getApplication(), traiter = false)
@@ -176,10 +184,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun exporter(uri: android.net.Uri, motDePasse: CharArray) = viewModelScope.launch(Dispatchers.IO) {
         messageSauvegarde.value = try {
-            val donnees = repo.exporter()
+            val base = repo.exporter()
+            val contexte = getApplication<Application>()
+            val photos = base.medicaments.mapNotNull { it.photoPath }.distinct().mapNotNull { nom ->
+                Photos.lireOctets(contexte, nom)?.let { nom to java.util.Base64.getEncoder().encodeToString(it) }
+            }.toMap()
+            val donnees = base.copy(photos = photos)
             val fichier = Chiffrement.chiffrer(SauvegardeJson.versJson(donnees).toByteArray(Charsets.UTF_8), motDePasse)
             getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!.use { it.write(fichier) }
-            "Sauvegarde enregistrée : ${donnees.medicaments.size} médicament(s), ${donnees.prises.size} ligne(s) de journal."
+            "Sauvegarde enregistrée : ${donnees.medicaments.size} médicament(s), ${donnees.photos.size} photo(s), ${donnees.prises.size} ligne(s) de journal."
         } catch (e: Exception) {
             "Échec de la sauvegarde : ${e.message ?: e.javaClass.simpleName}"
         } finally { motDePasse.fill('\u0000') }
@@ -189,9 +202,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         messageSauvegarde.value = try {
             val octets = getApplication<Application>().contentResolver.openInputStream(uri)!!.use { it.readBytes() }
             val donnees = SauvegardeJson.depuisJson(String(Chiffrement.dechiffrer(octets, motDePasse), Charsets.UTF_8))
+            // Les photos sont validées et écrites AVANT la base : une image illisible fait échouer la restauration sans rien changer
+            val contexte = getApplication<Application>()
+            donnees.photos.forEach { (nom, b64) ->
+                val octets = try { java.util.Base64.getDecoder().decode(b64) } catch (e: IllegalArgumentException) { throw SauvegardeInvalide("Une photo de la sauvegarde est corrompue") }
+                Photos.ecrireOctets(contexte, nom, octets)
+            }
             repo.remplacerPar(donnees)
             recaler()
-            "Données restaurées : ${donnees.medicaments.size} médicament(s), ${donnees.prises.size} ligne(s) de journal."
+            nettoyerPhotos()
+            "Données restaurées : ${donnees.medicaments.size} médicament(s), ${donnees.photos.size} photo(s), ${donnees.prises.size} ligne(s) de journal."
         } catch (e: MotDePasseIncorrect) {
             "Mot de passe incorrect, ou fichier modifié. Rien n'a été changé."
         } catch (e: SauvegardeInvalide) {
@@ -205,7 +225,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val archives: StateFlow<List<Medicament>> = db.medicaments().observerArchives()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun modifierMedicament(m: Medicament) = viewModelScope.launch { db.medicaments().modifier(m); recaler() }
+    fun modifierMedicament(m: Medicament) = viewModelScope.launch { db.medicaments().modifier(m); recaler(); nettoyerPhotos() }
 
     fun historique(medicamentId: Long): Flow<List<EntreeHistorique>> = combine(
         db.prises().observerJournal(medicamentId),
@@ -250,6 +270,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val id = db.medicaments().inserer(m)
         if (stockInitial > 0) repo.ajouterStock(id, stockInitial, System.currentTimeMillis())
         recaler()
+        nettoyerPhotos()
     }
 
     fun ajouterStock(medicamentId: Long, quantite: Double) = viewModelScope.launch {
@@ -262,5 +283,5 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         recaler()
     }
 
-    fun supprimer(m: Medicament) = viewModelScope.launch { db.medicaments().supprimer(m); recaler() }
+    fun supprimer(m: Medicament) = viewModelScope.launch { db.medicaments().supprimer(m); recaler(); nettoyerPhotos() }
 }

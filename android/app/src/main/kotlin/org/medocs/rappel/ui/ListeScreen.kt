@@ -147,7 +147,9 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
     val couleurs = if (l.alerte) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     else CardDefaults.cardColors()
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = couleurs) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          Vignette(m.photoPath, 72.dp)
+          Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(m.nom, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             m.substances?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -166,6 +168,7 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
+          }
         }
     }
 }

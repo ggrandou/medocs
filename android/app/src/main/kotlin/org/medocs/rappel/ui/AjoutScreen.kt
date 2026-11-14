@@ -188,6 +188,7 @@ private fun Formulaire(prefill: Prefill, onEnregistrer: (Medicament, Double) -> 
     var parBoite by remember { mutableStateOf(prefill.unitesParBoite?.let(::formaterQuantite) ?: "") }
     var stock by remember { mutableStateOf(prefill.unitesParBoite?.let(::formaterQuantite) ?: "") }
     var seuil by remember { mutableStateOf("7") }
+    var photo by remember { mutableStateOf<String?>(null) }
 
     val parBoiteVal = lireDecimal(parBoite)
     val stockVal = if (stock.isBlank()) 0.0 else lireDecimal(stock)
@@ -224,11 +225,13 @@ private fun Formulaire(prefill: Prefill, onEnregistrer: (Medicament, Double) -> 
             supportingText = { Text("Prévenir quand le stock couvre moins de ce nombre de jours.") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
+        ChampPhoto(photo) { photo = it }
         Button(
             enabled = valide, modifier = Modifier.fillMaxWidth(),
             onClick = {
                 onEnregistrer(
                     Medicament(
+                        photoPath = photo,
                         nom = nom.trim(), cip13 = prefill.cip13, substances = prefill.substances, forme = prefill.forme,
                         unite = unite.trim(), unitesParBoite = if (parBoite.isBlank()) null else parBoiteVal,
                         seuilJours = seuilVal!!,

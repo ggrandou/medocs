@@ -75,3 +75,10 @@ Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (
 - **Aide « rappels fiables »** (`ui/AideRappels.kt`) : bandeau si l'optimisation de la batterie est active, avec « Ne plus afficher » ; l'application ne peut pas se mettre elle-même en liste blanche (c'est volontaire : `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` est restreinte par le Play Store).
 - **minSdk 26** : tout appel d'API récente doit être gardé ou testé sur Android 9 (`canScheduleExactAlarms` et `checkSelfPermission(POST_NOTIFICATIONS)` ont déjà posé problème). Pour les notifications, utiliser `NotificationManager.areNotificationsEnabled()`.
 - Réglage de test du délai « manquée » : pref `delai_manque_min` de `moteur.xml` (défaut 120), modifiable via `adb shell run-as` après `force-stop`.
+
+## Photos des boîtes
+
+- La photo est choisie par l'utilisateur (caméra via `TakePicture` + `FileProvider` sur `cache/captures/`, ou galerie via `PickVisualMedia`) : **aucune permission caméra ni stockage**. `photos/Photos.kt` la réduit (1024 px max), la redresse selon l'EXIF et la ré-encode en JPEG : le fichier final n'a **aucune métadonnée, GPS compris** (testé). Stockage : `filesDir/photos/<uuid>.jpg`, nom référencé par `Medicament.photoPath`.
+- Les fichiers non référencés sont supprimés (`Photos.nettoyer`) au démarrage du ViewModel et après chaque ajout/modification/suppression/import : une photo abandonnée avant « Enregistrer » ne s'accumule pas.
+- **Sauvegarde** : les photos sont dans `Donnees.photos` (nom → Base64), champ **facultatif** du JSON : les anciennes sauvegardes restent lisibles, donc `VERSION` n'a pas changé. Les noms viennent d'un fichier non fiable : `nomPhotoValide` (`[A-Za-z0-9_-]{1,64}.jpg`) est vérifié à la lecture ET à l'écriture (`Photos.fichier`), et le contenu est vérifié comme image avant d'être écrit, AVANT toute écriture en base.
+- Piège vérifié : `BitmapFactory.decodeStream(..., inJustDecodeBounds = true)` renvoie toujours `null` ; ne jamais le chaîner à un `?: return null`.

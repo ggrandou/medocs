@@ -12,7 +12,13 @@ data class Donnees(
     val heures: List<PlanningHeure>,
     val prises: List<Prise>,
     val mouvements: List<StockMouvement>,
+    /** Photos des boîtes : nom de fichier → contenu JPEG en Base64. Facultatif (absent des anciennes sauvegardes). */
+    val photos: Map<String, String> = emptyMap(),
 )
+
+/** Les noms de photos viennent d'un fichier non fiable : lettres, chiffres, « - » et « _ » seulement, jamais de chemin. */
+private val NOM_PHOTO = Regex("[A-Za-z0-9_-]{1,64}\\.jpg")
+fun nomPhotoValide(nom: String): Boolean = NOM_PHOTO.matches(nom)
 
 class SauvegardeInvalide(message: String) : Exception(message)
 
@@ -28,6 +34,7 @@ object SauvegardeJson {
         put("heures", JSONArray().also { a -> d.heures.forEach { a.put(heure(it)) } })
         put("prises", JSONArray().also { a -> d.prises.forEach { a.put(prise(it)) } })
         put("mouvements", JSONArray().also { a -> d.mouvements.forEach { a.put(mouvement(it)) } })
+        put("photos", JSONObject().also { p -> d.photos.forEach { (nom, b64) -> p.put(nom, b64) } })
     }.toString()
 
     fun depuisJson(texte: String): Donnees {
@@ -35,12 +42,18 @@ object SauvegardeJson {
         if (o.optString("format") != "medocs") throw SauvegardeInvalide("Ce fichier n'est pas une sauvegarde de l'application")
         if (o.optInt("version") != VERSION) throw SauvegardeInvalide("Version de sauvegarde non prise en charge : ${o.optInt("version")}")
         return try {
+            val photos = o.optJSONObject("photos")?.let { p -> p.keys().asSequence().associateWith { p.getString(it) } } ?: emptyMap()
+            photos.keys.forEach { if (!nomPhotoValide(it)) throw SauvegardeInvalide("Nom de photo invalide dans la sauvegarde") }
             val d = Donnees(
-                medicaments = o.getJSONArray("medicaments").objets().map(::lireMedicament),
+                // Une photo absente du fichier n'est pas une erreur : le médicament perd simplement sa vignette
+                medicaments = o.getJSONArray("medicaments").objets().map(::lireMedicament).map {
+                    if (it.photoPath != null && it.photoPath !in photos) it.copy(photoPath = null) else it
+                },
                 plannings = o.getJSONArray("plannings").objets().map(::lirePlanning),
                 heures = o.getJSONArray("heures").objets().map(::lireHeure),
                 prises = o.getJSONArray("prises").objets().map(::lirePrise),
                 mouvements = o.getJSONArray("mouvements").objets().map(::lireMouvement),
+                photos = photos,
             )
             verifierCoherence(d)
             d

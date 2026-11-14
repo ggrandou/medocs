@@ -85,4 +85,40 @@ class SauvegardeTest {
         chiffre[8] = (chiffre[8].toInt() xor 1).toByte()
         try { Chiffrement.dechiffrer(chiffre, "bon".toCharArray()); fail() } catch (_: MotDePasseIncorrect) {}
     }
+
+    private val unePhoto = java.util.Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3, 4))
+
+    @Test fun lesPhotosFontLeTourDeLaSauvegarde() {
+        val avecPhoto = donnees.copy(
+            medicaments = listOf(donnees.medicaments[0].copy(photoPath = "a1b2-c3.jpg"), donnees.medicaments[1]),
+            photos = mapOf("a1b2-c3.jpg" to unePhoto),
+        )
+        assertEquals(avecPhoto, SauvegardeJson.depuisJson(SauvegardeJson.versJson(avecPhoto)))
+    }
+
+    @Test fun uneAncienneSauvegardeSansPhotosResteLisible() {
+        // Format sans le champ « photos » : doit se lire comme « aucune photo »
+        val json = org.json.JSONObject(SauvegardeJson.versJson(donnees)).apply { remove("photos") }.toString()
+        assertEquals(donnees, SauvegardeJson.depuisJson(json))
+    }
+
+    @Test fun uneVignetteManquanteEffaceSeulementLaReference() {
+        val sansFichier = donnees.copy(medicaments = listOf(donnees.medicaments[0].copy(photoPath = "absente.jpg"), donnees.medicaments[1]))
+        val lu = SauvegardeJson.depuisJson(SauvegardeJson.versJson(sansFichier))
+        assertEquals(null, lu.medicaments[0].photoPath)
+        assertEquals(donnees.medicaments[1], lu.medicaments[1])
+    }
+
+    @Test fun refuseLesNomsDePhotoDangereux() {
+        for (nom in listOf("../evil.jpg", "a/b.jpg", "..\\x.jpg", "photo.png", "", ".jpg", "a b.jpg", "x".repeat(70) + ".jpg", "/etc/passwd")) {
+            val json = SauvegardeJson.versJson(donnees.copy(photos = mapOf("ok.jpg" to unePhoto)))
+            val piege = org.json.JSONObject(json).apply { getJSONObject("photos").put(nom, unePhoto) }.toString()
+            try { SauvegardeJson.depuisJson(piege); fail("nom accepté : $nom") } catch (_: SauvegardeInvalide) {}
+        }
+    }
+
+    @Test fun nomsDePhotoValides() {
+        for (nom in listOf("a.jpg", "3f2b8c1e-1111-4222-8333-444455556666.jpg", "A_b-9.jpg")) assertTrue(nom, nomPhotoValide(nom))
+        for (nom in listOf("a.JPG", "a.jpeg", "a/b.jpg", "../a.jpg")) assertTrue(nom, !nomPhotoValide(nom))
+    }
 }

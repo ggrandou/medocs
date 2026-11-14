@@ -59,6 +59,7 @@ fun ModifierMedicamentScreen(vm: AppViewModel, medicament: Medicament, onRetour:
     var seuilJours by remember { mutableStateOf(medicament.seuilJours.toString()) }
     var seuilUnites by remember { mutableStateOf(medicament.seuilUnites?.let(::formaterQuantite) ?: "") }
     var confirmerArchivage by remember { mutableStateOf(false) }
+    var photo by remember { mutableStateOf(medicament.photoPath) }
 
     val parBoiteVal = lireDecimal(parBoite)
     val seuilJoursVal = seuilJours.trim().toIntOrNull()
@@ -102,11 +103,13 @@ fun ModifierMedicamentScreen(vm: AppViewModel, medicament: Medicament, onRetour:
                 supportingText = { Text("Utile pour un médicament sans planning.") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             )
+            ChampPhoto(photo) { photo = it }
             Button(
                 enabled = valide, modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     vm.modifierMedicament(
                         medicament.copy(
+                            photoPath = photo,
                             nom = nom.trim(), unite = unite.trim(),
                             unitesParBoite = if (parBoite.isBlank()) null else parBoiteVal,
                             seuilJours = seuilJoursVal!!,

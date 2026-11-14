@@ -26,6 +26,15 @@
             android:name=".ProtoAlarmesActivity"
             android:exported="false" />
 
+        <!-- Partage du fichier temporaire de capture avec l'appli photo du système (aucune permission caméra requise) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fichiers"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/chemins_fichiers" />
+        </provider>
+
         <receiver android:name=".rappels.MoteurReceiver" android:exported="false" />
         <receiver android:name=".rappels.ActionReceiver" android:exported="false" />
 
