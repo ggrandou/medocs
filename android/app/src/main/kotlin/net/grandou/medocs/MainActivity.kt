@@ -45,6 +45,7 @@ import net.grandou.medocs.ui.AppViewModel
 import net.grandou.medocs.ui.AujourdhuiScreen
 import net.grandou.medocs.ui.HistoriqueScreen
 import net.grandou.medocs.ui.ListeScreen
+import net.grandou.medocs.ui.PlusScreen
 import net.grandou.medocs.ui.ModifierMedicamentScreen
 import net.grandou.medocs.ui.PlanningScreen
 
@@ -195,20 +196,23 @@ class MainActivity : ComponentActivity() {
                                         ) { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))) })
                                     },
                                 )
+                            } else if (onglet == 2) {
+                                PlusScreen(
+                                    archives = archives,
+                                    onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) },
+                                    onSauvegarde = { sauvegarde = true },
+                                    onPriseEnMain = { revoirPriseEnMain = true },
+                                    onAPropos = { aPropos = true },
+                                    onAideRappels = { aide = true },
+                                    onProtoAlarmes = { startActivity(Intent(this@MainActivity, ProtoAlarmesActivity::class.java)) },
+                                )
                             } else {
                                 ListeScreen(
                                     lignes = lignes,
                                     onAjouter = { ajout = true },
-                                    onProtoAlarmes = { startActivity(Intent(this@MainActivity, ProtoAlarmesActivity::class.java)) },
-                                    onAideRappels = { aide = true },
-                                    onSauvegarde = { sauvegarde = true },
-                                    onAPropos = { aPropos = true },
-                                    onPriseEnMain = { revoirPriseEnMain = true },
                                     onPlanning = { planningDe = it.medicament.id },
                                     onModifier = { modificationDe = it.medicament.id },
                                     onHistorique = { historiqueDe = it.medicament.id },
-                                    archives = archives,
-                                    onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) },
                                     onAjouterStock = { l, q -> vm.ajouterStock(l.medicament.id, q) },
                                     onDefinirStock = { l, q -> vm.definirStock(l.medicament.id, q) },
                                     onSupprimer = { vm.supprimer(it.medicament) },

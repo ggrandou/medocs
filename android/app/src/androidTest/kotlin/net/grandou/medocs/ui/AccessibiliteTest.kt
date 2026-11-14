@@ -116,8 +116,12 @@ class AccessibiliteTest {
     )
 
     @Composable private fun listeScreen() = ListeScreen(
-        lignes = lignes, onAjouter = {}, onProtoAlarmes = {}, onAideRappels = {}, onSauvegarde = {}, onAPropos = {}, onPriseEnMain = {}, onPlanning = {}, onModifier = {},
-        onHistorique = {}, archives = emptyList(), onRestaurer = {}, onAjouterStock = { _, _ -> }, onDefinirStock = { _, _ -> }, onSupprimer = {},
+        lignes = lignes, onAjouter = {}, onPlanning = {}, onModifier = {},
+        onHistorique = {}, onAjouterStock = { _, _ -> }, onDefinirStock = { _, _ -> }, onSupprimer = {},
+    )
+
+    @Composable private fun plusScreen() = PlusScreen(
+        archives = emptyList(), onRestaurer = {}, onSauvegarde = {}, onPriseEnMain = {}, onAPropos = {}, onAideRappels = {}, onProtoAlarmes = {},
     )
 
     /** Témoin : un composant volontairement fautif DOIT être rejeté, sinon les autres tests ne prouveraient rien. */
@@ -135,6 +139,8 @@ class AccessibiliteTest {
     @Test fun aujourdhuiPolice200() = verifier("aujourdhui", 2f) { aujourdhuiScreen() }
     @Test fun listePoliceNormale() = verifier("liste", 1f) { listeScreen() }
     @Test fun listePolice200() = verifier("liste", 2f) { listeScreen() }
+    @Test fun plusPoliceNormale() = verifier("plus", 1f) { plusScreen() }
+    @Test fun plusPolice200() = verifier("plus", 2f) { plusScreen() }
     @Test fun avertissementPoliceNormale() = verifier("avertissement", 1f, controleA11y = false) { AvertissementDialog(premiereFois = true, versionApp = "0.1.0") {} }
     @Test fun avertissementPolice200() = verifier("avertissement", 2f, controleA11y = false) { AvertissementDialog(premiereFois = true, versionApp = "0.1.0") {} }
 

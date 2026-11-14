@@ -26,5 +26,12 @@ fun BarreNavigation(onglet: Int, onChange: (Int) -> Unit) {
             },
             label = { Text("Médicaments") },
         )
+        NavigationBarItem(
+            selected = onglet == 2, onClick = { onChange(2) },
+            icon = {
+                Icon(painterResource(if (onglet == 2) R.drawable.ic_nav_plus_actif else R.drawable.ic_nav_plus_inactif), contentDescription = null)
+            },
+            label = { Text("Plus") },
+        )
     }
 }

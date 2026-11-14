@@ -43,58 +43,20 @@ import net.grandou.medocs.domain.ProjectionStock
 fun ListeScreen(
     lignes: List<LigneMedicament>?,
     onAjouter: () -> Unit,
-    onProtoAlarmes: () -> Unit,
-    onAideRappels: () -> Unit,
-    onSauvegarde: () -> Unit,
-    onAPropos: () -> Unit,
-    onPriseEnMain: () -> Unit,
     onPlanning: (LigneMedicament) -> Unit,
     onModifier: (LigneMedicament) -> Unit,
     onHistorique: (LigneMedicament) -> Unit,
-    archives: List<net.grandou.medocs.data.Medicament>,
-    onRestaurer: (net.grandou.medocs.data.Medicament) -> Unit,
     onAjouterStock: (LigneMedicament, Double) -> Unit,
     onDefinirStock: (LigneMedicament, Double) -> Unit,
     onSupprimer: (LigneMedicament) -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
     var selection by remember { mutableStateOf<LigneMedicament?>(null) }
-    var voirArchives by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Mes médicaments") },
-                actions = {
-                    TextButton(onClick = { menu = true }) { Text("Plus") }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Médicaments archivés (${archives.size})") },
-                            onClick = { menu = false; voirArchives = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Sauvegarde : export / import") },
-                            onClick = { menu = false; onSauvegarde() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Revoir la prise en main") },
-                            onClick = { menu = false; onPriseEnMain() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("À propos et avertissement") },
-                            onClick = { menu = false; onAPropos() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Aide : rappels fiables") },
-                            onClick = { menu = false; onAideRappels() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Test des alarmes (prototype)") },
-                            onClick = { menu = false; onProtoAlarmes() },
-                        )
-                    }
-                },
             )
         },
         floatingActionButton = { ExtendedFloatingActionButton(onClick = onAjouter) { Text("+ Ajouter un médicament") } },
@@ -113,25 +75,6 @@ fun ListeScreen(
                 items(lignes, key = { it.medicament.id }) { l -> CarteMedicament(l) { selection = l } }
             }
         }
-    }
-
-    if (voirArchives) {
-        AlertDialog(
-            onDismissRequest = { voirArchives = false },
-            title = { Text("Médicaments archivés") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (archives.isEmpty()) Text("Aucun médicament archivé.")
-                    archives.forEach { m ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(m.nom, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = { onRestaurer(m) }) { Text("Restaurer") }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { voirArchives = false }) { Text("Fermer") } },
-        )
     }
 
     selection?.let { l ->

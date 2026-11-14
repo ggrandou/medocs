@@ -88,8 +88,8 @@ class EsthetiqueTest {
                         if (onglet == 0) AujourdhuiScreen(
                             etat = etat, medicaments = listOf(a, b), onPrendre = {}, onSauter = {}, onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> },
                         ) else ListeScreen(
-                            lignes = lignes, onAjouter = {}, onProtoAlarmes = {}, onAideRappels = {}, onSauvegarde = {}, onAPropos = {}, onPriseEnMain = {},
-                            onPlanning = {}, onModifier = {}, onHistorique = {}, archives = emptyList(), onRestaurer = {}, onAjouterStock = { _, _ -> },
+                            lignes = lignes, onAjouter = {},
+                            onPlanning = {}, onModifier = {}, onHistorique = {}, onAjouterStock = { _, _ -> },
                             onDefinirStock = { _, _ -> }, onSupprimer = {},
                         )
                     }
