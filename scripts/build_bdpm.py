@@ -100,6 +100,10 @@ def parse_unites(libelle: str):
             # Plusieurs « de N » (ex. « 5 récipients unidoses ») : moins fiable.
             fiable = 1 if discrete and len(matches) == 1 else 0
             return total_i, nom_unite, fiable
+    # « de N » portait sur une unité inconnue (cm2, emplâtre...) : on compte les contenants,
+    # sauf les emballages génériques (boîte, étui) dont le contenu reste inconnu.
+    if lead_c and lead_c.group(2).lower() not in ("boîte", "boite", "étui"):
+        return int(lead_c.group(1)), lead_c.group(2).lower(), 1
     return None, None, 0
 
 
