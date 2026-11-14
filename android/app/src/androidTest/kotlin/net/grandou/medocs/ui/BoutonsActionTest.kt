@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
@@ -27,7 +28,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** Les libellés « J'ai pris », « Reporter », « Sauter » ne doivent JAMAIS être coupés, quelles que soient la largeur d'écran et la police. */
+/** Les libellés « J'ai pris », « Reporter », « Sauter » ne doivent JAMAIS être coupés ni rognés, quelles que soient la largeur d'écran et la police. */
 @RunWith(AndroidJUnit4::class)
 class BoutonsActionTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
@@ -39,12 +40,28 @@ class BoutonsActionTest {
     private val occ = Occurrence(PlanningHeure(id = 1, planningId = 1, heure = LocalTime.of(12, 0), quantite = 1.0), LocalDate.now(), 1)
     private val etat = EtatAujourdhui(LocalDate.now(), listOf(LigneAujourdhui(occ, m, null, EtatOccurrence.EN_RETARD)), emptyList(), emptyList())
 
-    private fun lignesDe(libelle: String): Int {
-        val noeud = rule.onAllNodes(hasText(libelle), useUnmergedTree = true).fetchSemanticsNodes().first { SemanticsActions.GetTextLayoutResult in it.config }
+    /**
+     * Un bouton d'action doit avoir EXACTEMENT la largeur de son contenu (icône + texte + marges de Material) :
+     * plus étroit, son texte est rogné (« Reporte ») ; plus large, une largeur lui a été imposée (partage forcé entre boutons).
+     * Retourne la description du défaut, ou null si tout va bien.
+     */
+    private fun defautDe(libelle: String): String? {
+        val texte = rule.onAllNodes(hasText(libelle), useUnmergedTree = true).fetchSemanticsNodes().first { SemanticsActions.GetTextLayoutResult in it.config }
         val resultats = mutableListOf<TextLayoutResult>()
-        noeud.config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultats)
-        return resultats.first().lineCount
+        texte.config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultats)
+        val r = resultats.first()
+        if (r.lineCount != 1) return "sur ${r.lineCount} lignes"
+        val bouton = rule.onAllNodes(hasText(libelle) and hasClickAction()).fetchSemanticsNodes().first()
+        val marges = (16 + 18 + 8 + 24) * rule.activity.resources.displayMetrics.density // début + icône + espace + fin
+        val attendu = marges + r.getLineRight(0)
+        val reel = bouton.size.width.toFloat()
+        return when {
+            reel < attendu - 2f -> "TEXTE ROGNÉ : bouton de ${reel.toInt()} px, il en faut ${attendu.toInt()}"
+            reel > attendu + 2f -> "largeur imposée : bouton de ${reel.toInt()} px pour un contenu de ${attendu.toInt()}"
+            else -> null
+        }
     }
+
 
     @Test fun lesLibellesRestentSurUneLigne() {
         rule.setContent {
@@ -62,7 +79,7 @@ class BoutonsActionTest {
             echelle = e; largeurDp = w
             rule.waitForIdle()
             for (libelle in listOf("J'ai pris", "Reporter", "Sauter")) {
-                if (lignesDe(libelle) != 1) coupes += "« $libelle » sur ${lignesDe(libelle)} lignes à ${w} dp, police x$e"
+                defautDe(libelle)?.let { coupes += "« $libelle » $it à ${w} dp, police x$e" }
             }
         }
         assertTrue("Libellés coupés :\n" + coupes.joinToString("\n"), coupes.isEmpty())

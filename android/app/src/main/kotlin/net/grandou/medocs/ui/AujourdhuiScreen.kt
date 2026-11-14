@@ -202,13 +202,14 @@ private fun CarteOccurrence(
             }
           }
             if (l.etat.enAttente) {
-                FlowRow(maxItemsInEachRow = 3, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Largeur = celle du contenu (jamais de partage forcé : un bouton plus étroit que son texte le rogne).
                     // Trois actions de MÊME style : un bouton plein « Pris » se lisait comme un état déjà validé.
                     // Libellés complets pour TalkBack : « J'ai pris » seul ne dit pas de quelle prise il s'agit.
                     val quoi = "${l.medicament.nom}, ${o.heure}"
-                    BoutonAction("J'ai pris", R.drawable.ic_action_pris, "J'ai pris : $quoi", Modifier.weight(1f)) { onPrendre(l) }
-                    BoutonAction("Reporter", R.drawable.ic_action_reporter, "Reporter : $quoi", Modifier.weight(1f)) { onReporter() }
-                    BoutonAction("Sauter", R.drawable.ic_action_sauter, "Sauter : $quoi", Modifier.weight(1f)) { onSauter(l) }
+                    BoutonAction("J'ai pris", R.drawable.ic_action_pris, "J'ai pris : $quoi") { onPrendre(l) }
+                    BoutonAction("Reporter", R.drawable.ic_action_reporter, "Reporter : $quoi") { onReporter() }
+                    BoutonAction("Sauter", R.drawable.ic_action_sauter, "Sauter : $quoi") { onSauter(l) }
                 }
             } else {
                 l.prise?.let { TextButton(onClick = { onAnnuler(it) }, Modifier.semantics { contentDescription = "Annuler : ${l.medicament.nom}, ${o.heure}" }) { Text("Annuler") } }
@@ -284,9 +285,9 @@ private fun BandeauManquees(manquees: List<PonctuelleAujourdhui>) {
 
 /** Bouton d'action d'une prise : icône + verbe, tonal, identique pour les trois actions. */
 @Composable
-private fun BoutonAction(libelle: String, icone: Int, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun BoutonAction(libelle: String, icone: Int, description: String, onClick: () -> Unit) {
     FilledTonalButton(
-        onClick = onClick, modifier.semantics { contentDescription = description },
+        onClick = onClick, Modifier.semantics { contentDescription = description },
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
     ) {
         Icon(painterResource(icone), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
