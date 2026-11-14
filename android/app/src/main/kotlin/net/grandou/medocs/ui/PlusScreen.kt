@@ -1,6 +1,8 @@
 package net.grandou.medocs.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +35,8 @@ import net.grandou.medocs.data.Medicament
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlusScreen(
+    theme: String,
+    onTheme: (String) -> Unit,
     archives: List<Medicament>,
     onRestaurer: (Medicament) -> Unit,
     onSauvegarde: () -> Unit,
@@ -42,11 +46,13 @@ fun PlusScreen(
     onProtoAlarmes: () -> Unit,
 ) {
     var voirArchives by remember { mutableStateOf(false) }
+    var voirTheme by remember { mutableStateOf(false) }
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Plus") }) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            Ligne("Apparence", "Mode " + libelleTheme(theme)) { voirTheme = true }
             Ligne("Médicaments archivés (${archives.size})", "Retrouver un médicament archivé") { voirArchives = true }
             Ligne("Sauvegarde : export / import", "Fichier chiffré, choisi par toi") { onSauvegarde() }
             Ligne("Aide : rappels fiables", "Notifications, alarmes exactes, économie d'énergie") { onAideRappels() }
@@ -54,6 +60,28 @@ fun PlusScreen(
             Ligne("À propos et avertissement", null) { onAPropos() }
             Ligne("Test des alarmes (prototype)", null) { onProtoAlarmes() }
         }
+    }
+
+    if (voirTheme) {
+        AlertDialog(
+            onDismissRequest = { voirTheme = false },
+            title = { Text("Apparence") },
+            text = {
+                Column {
+                    for (choix in listOf("systeme", "clair", "sombre")) {
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .selectable(selected = theme == choix, role = Role.RadioButton) { voirTheme = false; if (theme != choix) onTheme(choix) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = theme == choix, onClick = null)
+                            Text(libelleTheme(choix).replaceFirstChar { it.uppercase() }, Modifier.padding(start = 12.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { voirTheme = false }) { Text("Fermer") } },
+        )
     }
 
     if (voirArchives) {
@@ -75,6 +103,8 @@ fun PlusScreen(
         )
     }
 }
+
+private fun libelleTheme(theme: String) = when (theme) { "clair" -> "clair"; "sombre" -> "sombre"; else -> "du système" }
 
 @Composable
 private fun Ligne(titre: String, detail: String?, onClick: () -> Unit) {

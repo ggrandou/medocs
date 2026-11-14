@@ -121,7 +121,7 @@ class AccessibiliteTest {
     )
 
     @Composable private fun plusScreen() = PlusScreen(
-        archives = emptyList(), onRestaurer = {}, onSauvegarde = {}, onPriseEnMain = {}, onAPropos = {}, onAideRappels = {}, onProtoAlarmes = {},
+        theme = "systeme", onTheme = {}, archives = emptyList(), onRestaurer = {}, onSauvegarde = {}, onPriseEnMain = {}, onAPropos = {}, onAideRappels = {}, onProtoAlarmes = {},
     )
 
     /** Témoin : un composant volontairement fautif DOIT être rejeté, sinon les autres tests ne prouveraient rien. */

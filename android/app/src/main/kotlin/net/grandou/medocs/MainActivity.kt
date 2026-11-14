@@ -70,6 +70,21 @@ class MainActivity : ComponentActivity() {
     }
     private val choisirFichierImport = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> fichierAImporter = uri }
 
+    /** Mode clair/sombre choisi dans « Plus » (« systeme » par défaut) : force le mode nuit de la configuration, donc Compose,
+     *  le thème de fenêtre (-night) et les sélecteurs d'heure suivent. Changer de mode recrée l'activité. */
+    override fun attachBaseContext(base: android.content.Context) {
+        val mode = base.getSharedPreferences("ui", MODE_PRIVATE).getString("theme", "systeme")
+        val nuit = when (mode) {
+            "clair" -> android.content.res.Configuration.UI_MODE_NIGHT_NO
+            "sombre" -> android.content.res.Configuration.UI_MODE_NIGHT_YES
+            else -> null
+        }
+        if (nuit == null) return super.attachBaseContext(base)
+        val cfg = android.content.res.Configuration(base.resources.configuration)
+        cfg.uiMode = (cfg.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or nuit
+        super.attachBaseContext(base.createConfigurationContext(cfg))
+    }
+
     private val prefsUi by lazy { getSharedPreferences("ui", MODE_PRIVATE) }
 
     /** Première demande : fenêtre du système (Android 13+). Ensuite le système la refuse d'office : on ouvre les réglages. */
@@ -198,6 +213,8 @@ class MainActivity : ComponentActivity() {
                                 )
                             } else if (onglet == 2) {
                                 PlusScreen(
+                                    theme = prefsUi.getString("theme", "systeme") ?: "systeme",
+                                    onTheme = { prefsUi.edit().putString("theme", it).apply(); recreate() },
                                     archives = archives,
                                     onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) },
                                     onSauvegarde = { sauvegarde = true },
