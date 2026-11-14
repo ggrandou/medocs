@@ -165,16 +165,14 @@ private fun CarteOccurrence(
     val o = l.occurrence
     // Une couleur par statut (rôles du thème : contrastes vérifiés, clair et sombre). Le texte du statut reste écrit : la couleur n'est jamais seule.
     val sombre = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val couleurs = if (l.etat == EtatOccurrence.PRISE) CardDefaults.cardColors(
-        containerColor = if (sombre) Color(0xFF1E4D2B) else Color(0xFFCDEBD3), // vert doux : « fait » (hors palette de l'icône)
-        contentColor = if (sombre) Color(0xFFCDEBD3) else Color(0xFF00210C),
-    ) else CardDefaults.cardColors(containerColor = when (l.etat) {
-        EtatOccurrence.EN_RETARD -> MaterialTheme.colorScheme.errorContainer
-        EtatOccurrence.REPORTEE -> MaterialTheme.colorScheme.tertiaryContainer
-        EtatOccurrence.PRISE -> MaterialTheme.colorScheme.primaryContainer // jamais utilisé : cas traité ci-dessus
-        EtatOccurrence.SAUTEE, EtatOccurrence.MANQUEE -> MaterialTheme.colorScheme.surfaceVariant
-        EtatOccurrence.A_VENIR -> MaterialTheme.colorScheme.surfaceContainerLow
-    })
+    val couleurs = when (l.etat) {
+        EtatOccurrence.A_VENIR -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+        EtatOccurrence.MANQUEE -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        else -> {
+            val (fond, texte) = couleursStatut(l.etat, sombre)
+            CardDefaults.cardColors(containerColor = fond, contentColor = texte)
+        }
+    }
     Card(Modifier.fillMaxWidth(), colors = couleurs) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           // Heure, nom, dose et état forment UNE phrase pour TalkBack ; les boutons restent des éléments à part
@@ -304,4 +302,12 @@ private fun BoutonAction(libelle: String, icone: Int, description: String, onCli
         // rangée passe à la ligne suivante au lieu de comprimer le texte (« Reporter » se coupait en deux sur certains écrans)
         Text(libelle, maxLines = 1, softWrap = false)
     }
+}
+
+/** Couleur de fond et de texte d'un statut (contrastes > 7:1). Hors palette de l'icône : vert = fait, jaune = reporté, orange = en retard, rouge = sautée ; gris = manquée. */
+private fun couleursStatut(etat: EtatOccurrence, sombre: Boolean): Pair<Color, Color> = when (etat) {
+    EtatOccurrence.PRISE -> if (sombre) Color(0xFF1E4D2B) to Color(0xFFCDEBD3) else Color(0xFFCDEBD3) to Color(0xFF00210C)
+    EtatOccurrence.REPORTEE -> if (sombre) Color(0xFF665200) to Color(0xFFFFF3A0) else Color(0xFFFFF3A0) to Color(0xFF221B00)
+    EtatOccurrence.EN_RETARD -> if (sombre) Color(0xFF8A4A00) to Color(0xFFFFE0C2) else Color(0xFFFFCF99) to Color(0xFF2E1500)
+    else -> if (sombre) Color(0xFF93000A) to Color(0xFFFFDAD6) else Color(0xFFFFB8B0) to Color(0xFF410002) // SAUTEE
 }

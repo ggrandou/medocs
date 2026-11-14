@@ -135,6 +135,18 @@ class AccessibiliteTest {
         org.junit.Assert.assertNotNull("le contrôle d'accessibilité aurait dû échouer", erreur)
     }
 
+    /** Un exemplaire de chaque statut (dont « manquée », « sautée »), pour relire les couleurs sur la capture. */
+    @Test fun lesSixStatutsSontRendus() {
+        val os = (1..6).map { occurrence(it.toLong(), 6 + it, doliprane) }
+        val etats = listOf(EtatOccurrence.PRISE to StatutPrise.PRISE, EtatOccurrence.REPORTEE to StatutPrise.REPORTEE, EtatOccurrence.EN_RETARD to null,
+            EtatOccurrence.MANQUEE to StatutPrise.MANQUEE, EtatOccurrence.SAUTEE to StatutPrise.SAUTEE, EtatOccurrence.A_VENIR to null)
+        val lignes6 = os.zip(etats).map { (o, e) -> LigneAujourdhui(o, doliprane, e.second?.let { prise(o, it) }, e.first) }
+        verifier("statuts", 1f) {
+            AujourdhuiScreen(etat = EtatAujourdhui(aujourdhui, lignes6, emptyList(), emptyList()), medicaments = listOf(doliprane), onPrendre = {}, onSauter = {},
+                onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> })
+        }
+    }
+
     @Test fun aujourdhuiPoliceNormale() = verifier("aujourdhui", 1f) { aujourdhuiScreen() }
     @Test fun aujourdhuiPolice200() = verifier("aujourdhui", 2f) { aujourdhuiScreen() }
     @Test fun listePoliceNormale() = verifier("liste", 1f) { listeScreen() }
