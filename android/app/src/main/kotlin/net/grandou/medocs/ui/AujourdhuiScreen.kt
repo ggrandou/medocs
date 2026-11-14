@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -162,10 +164,14 @@ private fun CarteOccurrence(
 ) {
     val o = l.occurrence
     // Une couleur par statut (rôles du thème : contrastes vérifiés, clair et sombre). Le texte du statut reste écrit : la couleur n'est jamais seule.
-    val couleurs = CardDefaults.cardColors(containerColor = when (l.etat) {
+    val sombre = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val couleurs = if (l.etat == EtatOccurrence.PRISE) CardDefaults.cardColors(
+        containerColor = if (sombre) Color(0xFF1E4D2B) else Color(0xFFCDEBD3), // vert doux : « fait » (hors palette de l'icône)
+        contentColor = if (sombre) Color(0xFFCDEBD3) else Color(0xFF00210C),
+    ) else CardDefaults.cardColors(containerColor = when (l.etat) {
         EtatOccurrence.EN_RETARD -> MaterialTheme.colorScheme.errorContainer
         EtatOccurrence.REPORTEE -> MaterialTheme.colorScheme.tertiaryContainer
-        EtatOccurrence.PRISE -> MaterialTheme.colorScheme.primaryContainer
+        EtatOccurrence.PRISE -> MaterialTheme.colorScheme.primaryContainer // jamais utilisé : cas traité ci-dessus
         EtatOccurrence.SAUTEE, EtatOccurrence.MANQUEE -> MaterialTheme.colorScheme.surfaceVariant
         EtatOccurrence.A_VENIR -> MaterialTheme.colorScheme.surfaceContainerLow
     })
