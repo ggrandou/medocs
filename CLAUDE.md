@@ -33,6 +33,7 @@ Périmètre volontairement restreint :
 - Tests du script : `python3 -I -m unittest discover -s scripts -v` ; un seul test : `python3 -I -m unittest discover -s scripts -k test_multiplicateur_en_tete`. Ils portent sur `parse_unites` (extraction du nombre d'unités depuis le libellé) ; ajouter un cas dans `scripts/test_build_bdpm.py` à chaque libellé BDPM mal interprété.
 
 - Application Android (dossier `android/`, Gradle 8.13 + AGP 8.13.2 + Kotlin 2.2.10, SDK dans `~/Android/Sdk`, JDK 21) : tout se fait en ligne de commande, Android Studio n'est pas nécessaire. Depuis `android/` : `./gradlew assembleDebug` puis `adb install -r app/build/outputs/apk/debug/app-debug.apk`. `local.properties` (chemin du SDK) est ignoré par git : le recréer avec `sdk.dir=...` sur une autre machine.
+- Tests Kotlin : `./gradlew testDebugUnitTest` (JVM, logique de `domain/`, sans téléphone) ; `./gradlew connectedDebugAndroidTest` (sur l'appareil, base Room en mémoire). Attention : ce dernier **désinstalle l'application** à la fin (perte des autorisations et du journal du prototype) : réinstaller ensuite avec `adb install`.
 - Appareil de test : Galaxy S23 Ultra, Android 17 (One UI, gestion batterie agressive à tester).
 - `android/` contient pour l'instant un **prototype d'alarmes sans aucune dépendance** (Views classiques, pas encore Compose) : il compare `setExactAndAllowWhileIdle` et `setAlarmClock`, journalise l'écart entre heure prévue et heure réelle, et reprogramme après redémarrage/changement d'heure.
 
@@ -46,6 +47,12 @@ Source : Base de données publique des médicaments (data.gouv.fr / base-donnees
 - **Le nombre d'unités par boîte n'existe que dans le libellé texte** de la présentation (ex. « plaquette(s) thermoformée(s) PVC de 30 comprimé(s) »). Il est extrait par expressions régulières ; la valeur doit toujours rester modifiable par l'utilisateur (sirops, collyres, stylos injecteurs). Prévoir aussi une saisie manuelle complète pour les médicaments absents de la base.
 - La base doit être produite par un script reproductible (téléchargement → filtrage → SQLite compacte), exécutable en CI pour générer les releases.
 
-## Modèle de données minimal
+## Modèle de données (Room, `android/app/src/main/kotlin/org/medocs/rappel/`)
 
-Médicament (nom, forme, unité, photo) ; Stock (quantité, seuil) ; Planning (jours/heures, quantité par prise, date de fin éventuelle) ; Journal des prises (prise, sautée, reportée, ponctuelle). Chaque prise décrémente le stock. L'alerte de stock faible se calcule en **jours restants** (stock ÷ consommation quotidienne), pas en simple seuil d'unités.
+Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (heure + dose), `prise` (journal), `stock_mouvement`. Décisions non évidentes :
+- **Le stock n'est jamais stocké** : c'est la somme des `stock_mouvement.delta`. Un mouvement PRISE est lié à sa `prise` (cascade) : supprimer une prise, ou la passer en « sautée », restitue le stock sans dérive.
+- **Les occurrences futures ne sont pas stockées** : elles se déduisent des plannings (`domain/Planification.kt`). Une ligne `prise` n'existe que quand l'utilisateur agit (prise, sautée, reportée) ou pour une prise ponctuelle (`planningHeureId == null`). Unicité d'une occurrence : `(planningHeureId, datePrevue)`.
+- **Heures « murales » locales** (`LocalTime`, `LocalDate`) : « 8h00 » reste 8h00 après changement d'heure ou de fuseau ; les instants (epoch ms) ne servent que pour `horodatage` et `reporteJusqua`.
+- Les infos BDPM sont **copiées** dans `medicament` (pas de clé étrangère vers la base BDPM, remplacée à chaque release). Saisie 100 % manuelle possible (`cip13 == null`).
+- Alerte de stock faible : `projeterStock` simule le planning jour par jour jusqu'à la rupture, comparée à `seuilJours` ; `seuilUnites` couvre les médicaments sans planning. Doses décimales (0.5) pour les demi-comprimés.
+- Les opérations multi-tables passent par `data/Repository.kt` (transactionnelles, idempotentes). Les schémas Room sont exportés dans `android/app/schemas/` et doivent être versionnés : toute modification d'entité exige d'incrémenter `version` et d'écrire une migration.
