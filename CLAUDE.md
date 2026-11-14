@@ -13,7 +13,7 @@ Dépôt vide au démarrage (aucun code, aucune commande de build/test définie).
 
 ## Objectif
 
-Application Android de **rappel de prise de médicaments**, d'abord personnelle, puis diffusée publiquement : gratuite, sans publicité, open source (GPLv3 ou AGPLv3 envisagée). Interface et documentation en français.
+Application Android de **rappel de prise de médicaments**, d'abord personnelle, puis diffusée publiquement : gratuite, sans publicité, open source, **licence GPLv3 ou ultérieure** (fichier `LICENSE`, texte officiel de la FSF). Interface et documentation en français.
 
 Périmètre volontairement restreint :
 - rappel à l'heure de la prise (actions « Pris / Reporter / Sauter » dans la notification) ;

@@ -57,6 +57,10 @@ fun AvertissementDialog(premiereFois: Boolean, versionApp: String, onFermer: () 
                     "Données des médicaments : Base de données publique des médicaments (ANSM, HAS, Assurance Maladie), Licence Ouverte 2.0 (Etalab).",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                Text(
+                    "Logiciel libre et gratuit, sous licence GNU GPL version 3 ou ultérieure : tu peux le copier, l'étudier et le modifier. Il est fourni sans aucune garantie.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text("Version $versionApp", style = MaterialTheme.typography.bodySmall)
             }
         },
