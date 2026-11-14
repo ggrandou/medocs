@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -52,19 +53,28 @@ private data class Prefill(
 
 private sealed interface Etape {
     data object Recherche : Etape
+    data object Scan : Etape
+    data class CodeInconnu(val code: net.grandou.medocs.domain.CodeBoite) : Etape
     data class Presentations(val specialite: SpecialiteBdpm) : Etape
     data class Formulaire(val prefill: Prefill, val retour: Etape) : Etape
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AjoutScreen(vm: AppViewModel, onTermine: () -> Unit) {
+fun AjoutScreen(
+    vm: AppViewModel,
+    onTermine: () -> Unit,
+    // Remplaçable pour tester l'enchaînement « code lu → formulaire » sans caméra
+    ecranScan: @Composable (onCode: (net.grandou.medocs.domain.CodeBoite) -> Unit, onSaisieManuelle: () -> Unit) -> Unit =
+        { onCode, onManuel -> EcranScan(onCode, onManuel) },
+) {
     var etape by remember { mutableStateOf<Etape>(Etape.Recherche) }
+    val portee = androidx.compose.runtime.rememberCoroutineScope()
 
     BackHandler {
         when (val e = etape) {
             Etape.Recherche -> onTermine()
-            is Etape.Presentations -> etape = Etape.Recherche
+            is Etape.Presentations, Etape.Scan, is Etape.CodeInconnu -> etape = Etape.Recherche
             is Etape.Formulaire -> etape = e.retour
         }
     }
@@ -75,7 +85,7 @@ fun AjoutScreen(vm: AppViewModel, onTermine: () -> Unit) {
             navigationIcon = { TextButton(onClick = {
                 when (val e = etape) {
                     Etape.Recherche -> onTermine()
-                    is Etape.Presentations -> etape = Etape.Recherche
+                    is Etape.Presentations, Etape.Scan, is Etape.CodeInconnu -> etape = Etape.Recherche
                     is Etape.Formulaire -> etape = e.retour
                 }
             }) { Text("Retour") } },
@@ -83,8 +93,38 @@ fun AjoutScreen(vm: AppViewModel, onTermine: () -> Unit) {
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (val e = etape) {
+                Etape.Scan -> ecranScan(
+                    { code ->
+                        portee.launch {
+                            val trouve = vm.trouverParCip13(code.cip13)
+                            etape = if (trouve == null) Etape.CodeInconnu(code) else Etape.Formulaire(
+                                Prefill(
+                                    nom = trouve.specialite.nom, cip13 = trouve.presentation.cip13, substances = trouve.specialite.substances,
+                                    forme = trouve.specialite.forme, unite = trouve.presentation.unite ?: "unité",
+                                    unitesParBoite = trouve.presentation.nbUnites, aVerifier = !trouve.presentation.nbUnitesFiable,
+                                ),
+                                retour = Etape.Recherche,
+                            )
+                        }
+                    },
+                    { etape = Etape.Recherche },
+                )
+                is Etape.CodeInconnu -> Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Code non trouvé", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Le code ${e.code.cip13} n'est pas dans la base des médicaments commercialisés : médicament récent, retiré du marché, ou autre produit.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Button(onClick = { etape = Etape.Scan }, Modifier.fillMaxWidth()) { Text("Scanner un autre code") }
+                    OutlinedButton(
+                        onClick = { etape = Etape.Formulaire(Prefill(cip13 = e.code.cip13), Etape.Recherche) },
+                        Modifier.fillMaxWidth(),
+                    ) { Text("Saisie manuelle (garde ce code)") }
+                    OutlinedButton(onClick = { etape = Etape.Recherche }, Modifier.fillMaxWidth()) { Text("Chercher par le nom") }
+                }
                 Etape.Recherche -> EtapeRecherche(
                     vm,
+                    onScan = { etape = Etape.Scan },
                     onChoisir = { etape = Etape.Presentations(it) },
                     onManuel = { etape = Etape.Formulaire(Prefill(), Etape.Recherche) },
                 )
@@ -117,7 +157,7 @@ fun AjoutScreen(vm: AppViewModel, onTermine: () -> Unit) {
 }
 
 @Composable
-private fun EtapeRecherche(vm: AppViewModel, onChoisir: (SpecialiteBdpm) -> Unit, onManuel: () -> Unit) {
+private fun EtapeRecherche(vm: AppViewModel, onScan: () -> Unit, onChoisir: (SpecialiteBdpm) -> Unit, onManuel: () -> Unit) {
     var texte by remember { mutableStateOf("") }
     val resultats by vm.resultats.collectAsState()
     val enCours by vm.rechercheEnCours.collectAsState()
@@ -130,8 +170,9 @@ private fun EtapeRecherche(vm: AppViewModel, onChoisir: (SpecialiteBdpm) -> Unit
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = texte, onValueChange = { texte = it }, modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nom du médicament ou molécule") }, singleLine = true,
+            label = { Text("Nom, molécule ou numéro (CIP) du médicament") }, singleLine = true,
         )
+        Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text("Scanner le code-barres de la boîte") }
         OutlinedButton(onClick = onManuel, modifier = Modifier.fillMaxWidth()) { Text("Saisie manuelle (médicament absent de la liste)") }
     }
     when {

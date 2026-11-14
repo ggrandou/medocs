@@ -3,6 +3,10 @@
 
     <!-- Pas de permission INTERNET : l'application reste 100 % locale. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Caméra : lecture du code-barres d'une boîte et prise de photo ; aucune image n'est envoyée nulle part -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

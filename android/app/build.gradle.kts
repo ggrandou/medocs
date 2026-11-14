@@ -62,6 +62,14 @@ room {
 
 dependencies {
     implementation("androidx.exifinterface:exifinterface:1.4.1")
+    // Lecture des codes-barres de boîtes : ZXing (Apache 2.0, pur Java) + CameraX. Aucun service Google, aucun réseau.
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.camera:camera-core:1.6.0")
+    implementation("androidx.camera:camera-camera2:1.6.0")
+    implementation("androidx.camera:camera-lifecycle:1.6.0")
+    implementation("androidx.camera:camera-view:1.6.0")
+    // Fournit l'interface ListenableFuture que CameraX expose (sans elle, Kotlin refuse de compiler l'appel à enableTorch)
+    implementation("com.google.guava:guava:33.4.8-android")
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")

@@ -260,6 +260,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    suspend fun trouverParCip13(cip13: String): net.grandou.medocs.bdpm.TrouvailleBdpm? {
+        val base = bdpm.await()
+        return withContext(Dispatchers.IO) { base.parCip13(cip13) }
+    }
+
     suspend fun presentations(cis: Long): List<PresentationBdpm> {
         val base = bdpm.await()
         return withContext(Dispatchers.IO) { base.presentations(cis) }

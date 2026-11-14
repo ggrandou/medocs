@@ -1,6 +1,6 @@
 # Mes Médocs
 
-Application Android de **rappel de prise de médicaments**, gratuite, sans publicité et **entièrement locale** : elle ne se connecte jamais à internet (aucune permission `INTERNET`).
+Application Android de **rappel de prise de médicaments**, gratuite, sans publicité et **entièrement locale** : elle ne se connecte jamais à internet (aucune permission `INTERNET`). Seules permissions sensibles : notifications et, à la demande, la caméra (scan et photo de la boîte).
 
 > Un simple aide-mémoire. Mes Médocs ne donne aucun conseil médical, ne vérifie ni les doses ni les interactions, et ne remplace ni un médecin ni un pharmacien.
 
@@ -9,7 +9,8 @@ Application Android de **rappel de prise de médicaments**, gratuite, sans publi
 - Rappels à l'heure de la prise (notification avec « Pris », « Reporter » et « Sauter »), y compris téléphone en veille ou redémarré
 - Plannings souples : tous les jours, certains jours de la semaine, tous les N jours, plusieurs heures et doses par jour
 - Gestion du stock, alerte quand il est faible (en jours de traitement restants) et prises hors planning
-- Recherche d'un médicament par nom ou molécule dans la base publique française, ou saisie manuelle
+- Recherche d'un médicament par nom, molécule ou numéro, dans la base publique française, ou saisie manuelle
+- **Scan du code-barres ou du Datamatrix de la boîte** : le médicament et son conditionnement sont retrouvés sans rien taper (la caméra n'enregistre ni n'envoie rien)
 - Photo de la boîte, prise par l'utilisateur
 - Sauvegarde et restauration par un fichier chiffré (mot de passe) que l'utilisateur garde lui-même
 

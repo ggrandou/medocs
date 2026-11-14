@@ -81,6 +81,14 @@ fun ChampPhoto(nom: String?, onChange: (String?) -> Unit) {
     }
 
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) traiter(uriCapture) }
+    // Dès que l'application déclare la permission CAMERA, Android la EXIGE aussi pour la capture par l'appli photo du système
+    // (sinon SecurityException) : on la demande donc avant de lancer la capture.
+    fun lancerCapture() {
+        try { camera.launch(uriCapture) } catch (e: ActivityNotFoundException) { erreur = "Aucune application photo disponible." }
+    }
+    val demandeCamera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) lancerCapture() else erreur = "Autorisation de la caméra refusée : choisis plutôt une photo dans la galerie."
+    }
     val galerie = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) traiter(uri) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -88,7 +96,7 @@ fun ChampPhoto(nom: String?, onChange: (String?) -> Unit) {
         Vignette(nom, 120.dp, description = "Aperçu de la photo de la boîte")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
-                try { camera.launch(uriCapture) } catch (e: ActivityNotFoundException) { erreur = "Aucune application photo disponible." }
+                if (cameraAutorisee(contexte)) lancerCapture() else demandeCamera.launch(android.Manifest.permission.CAMERA)
             }) { Text("Prendre une photo") }
             OutlinedButton(onClick = { galerie.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text("Galerie") }
             if (nom != null) TextButton(onClick = { onChange(null) }) { Text("Retirer") }
