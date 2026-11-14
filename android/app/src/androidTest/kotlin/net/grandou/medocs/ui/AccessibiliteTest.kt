@@ -147,6 +147,28 @@ class AccessibiliteTest {
         }
     }
 
+    // États vides illustrés : rien de prévu, journée terminée, aucun médicament
+    @Test fun aujourdhuiSansPrise() = verifier("aujourdhui-vide", 1f) {
+        AujourdhuiScreen(etat = EtatAujourdhui(aujourdhui, emptyList(), emptyList(), emptyList()), medicaments = listOf(doliprane), onPrendre = {}, onSauter = {},
+            onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> })
+    }
+    @Test fun aujourdhuiTermine() {
+        val a = occurrence(1, 8, doliprane); val b = occurrence(2, 12, doliprane)
+        verifier("aujourdhui-termine", 1f) {
+            AujourdhuiScreen(
+                etat = EtatAujourdhui(aujourdhui, listOf(LigneAujourdhui(a, doliprane, prise(a, StatutPrise.PRISE), EtatOccurrence.PRISE), LigneAujourdhui(b, doliprane, prise(b, StatutPrise.SAUTEE), EtatOccurrence.SAUTEE)), emptyList(), emptyList()),
+                medicaments = listOf(doliprane), onPrendre = {}, onSauter = {}, onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> })
+        }
+        rule.onNodeWithText("C'est tout pour aujourd'hui").assertExists()
+    }
+    @Test fun aujourdhuiNonTermineSansMessage() {
+        rule.setContent { net.grandou.medocs.ui.AppTheme { aujourdhuiScreen() } }
+        rule.onAllNodes(androidx.compose.ui.test.hasText("C'est tout pour aujourd'hui")).assertCountEquals(0)
+    }
+    @Test fun listeSansMedicament() = verifier("liste-vide", 1f) {
+        ListeScreen(lignes = emptyList(), onAjouter = {}, onPlanning = {}, onModifier = {}, onHistorique = {}, onAjouterStock = { _, _ -> }, onDefinirStock = { _, _ -> }, onSupprimer = {})
+    }
+
     @Test fun aujourdhuiPoliceNormale() = verifier("aujourdhui", 1f) { aujourdhuiScreen() }
     @Test fun aujourdhuiPolice200() = verifier("aujourdhui", 2f) { aujourdhuiScreen() }
     @Test fun listePoliceNormale() = verifier("liste", 1f) { listeScreen() }

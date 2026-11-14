@@ -20,15 +20,15 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 
 /** Dessins décoratifs des pages de prise en main : tracés en Canvas avec les couleurs du thème (clair et sombre). Muets pour TalkBack. */
-enum class Dessin { PILULE, BOITE, CONSEIL, BOUCLIER, CLOCHE }
+enum class Dessin { PILULE, BOITE, CONSEIL, BOUCLIER, CLOCHE, CALENDRIER, TOUT_FAIT, FLACON }
 
 @Composable
-fun IllustrationPage(dessin: Dessin) {
+fun IllustrationPage(dessin: Dessin, hauteur: androidx.compose.ui.unit.Dp = 150.dp) {
     val c = MaterialTheme.colorScheme
     val fond = c.primaryContainer; val trait = c.onPrimaryContainer
     val accent = c.tertiary; val doux = c.tertiaryContainer; val vif = c.primary; val sec = c.secondaryContainer
-    Box(Modifier.fillMaxWidth().height(150.dp).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.height(150.dp).fillMaxWidth()) {
+    Box(Modifier.fillMaxWidth().height(hauteur).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.height(hauteur).fillMaxWidth()) {
             val s = size.height
             val centre = Offset(size.width / 2, s / 2)
             drawCircle(fond, radius = s * 0.46f, center = centre)
@@ -42,6 +42,9 @@ fun IllustrationPage(dessin: Dessin) {
                 Dessin.CONSEIL -> ampoule(centre, s, accent, c.surface, trait)
                 Dessin.BOUCLIER -> bouclier(centre, s, vif, c.onPrimary)
                 Dessin.CLOCHE -> cloche(centre, s, accent, vif, trait)
+                Dessin.CALENDRIER -> calendrier(centre, s, c.surface, vif, accent, trait)
+                Dessin.TOUT_FAIT -> toutFait(centre, s, vif)
+                Dessin.FLACON -> flacon(centre, s, c.surface, vif, accent, trait)
             }
         }
     }
@@ -114,4 +117,47 @@ private fun DrawScope.cloche(centre: Offset, s: Float, a: Color, point: Color, t
     drawCircle(trait, s * 0.02f, Offset(centre.x, y - h * 0.04f))
     // pastille de notification
     drawCircle(point, s * 0.07f, Offset(x + w * 0.92f, y + h * 0.12f))
+}
+
+private fun DrawScope.calendrier(centre: Offset, s: Float, face: Color, a: Color, b: Color, trait: Color) {
+    val w = s * 0.5f; val h = s * 0.46f
+    val x = centre.x - w / 2; val y = centre.y - h / 2
+    drawRoundRect(face, Offset(x, y), Size(w, h), CornerRadius(s * 0.05f))
+    drawRoundRect(a, Offset(x, y), Size(w, h * 0.26f), CornerRadius(s * 0.05f))
+    for (i in 0..1) drawRoundRect(trait, Offset(x + w * (0.25f + i * 0.5f) - s * 0.015f, y - s * 0.04f), Size(s * 0.03f, s * 0.09f), CornerRadius(s * 0.015f))
+    // soleil : journée libre
+    val c = Offset(centre.x, y + h * 0.64f)
+    for (i in 0 until 8) {
+        val ang = Math.toRadians(i * 45.0)
+        drawLine(b, Offset(c.x + (s * 0.075f * Math.cos(ang)).toFloat(), c.y + (s * 0.075f * Math.sin(ang)).toFloat()),
+            Offset(c.x + (s * 0.105f * Math.cos(ang)).toFloat(), c.y + (s * 0.105f * Math.sin(ang)).toFloat()), s * 0.016f, StrokeCap.Round)
+    }
+    drawCircle(b, s * 0.055f, c)
+}
+
+private fun DrawScope.toutFait(centre: Offset, s: Float, a: Color) {
+    drawCircle(a, s * 0.2f, centre)
+    drawLine(Color.White, Offset(centre.x - s * 0.09f, centre.y + s * 0.01f), Offset(centre.x - s * 0.02f, centre.y + s * 0.08f), s * 0.045f, StrokeCap.Round)
+    drawLine(Color.White, Offset(centre.x - s * 0.02f, centre.y + s * 0.08f), Offset(centre.x + s * 0.1f, centre.y - s * 0.07f), s * 0.045f, StrokeCap.Round)
+    // confettis
+    val teintes = listOf(Color(0xFFE8A200), Color(0xFFD9534F), Color(0xFF2E9E5B), Color(0xFFE8A200), Color(0xFFD9534F), Color(0xFF2E9E5B))
+    for (i in 0 until 6) {
+        val ang = Math.toRadians(-90.0 + i * 60.0 + 20.0)
+        val d = s * 0.3f
+        val p = Offset(centre.x + (d * Math.cos(ang)).toFloat(), centre.y + (d * Math.sin(ang)).toFloat())
+        rotate(i * 35f, p) { drawRoundRect(teintes[i], Offset(p.x - s * 0.02f, p.y - s * 0.035f), Size(s * 0.04f, s * 0.07f), CornerRadius(s * 0.01f)) }
+    }
+}
+
+private fun DrawScope.flacon(centre: Offset, s: Float, face: Color, a: Color, b: Color, trait: Color) {
+    val w = s * 0.3f; val h = s * 0.34f
+    val x = centre.x - w / 2; val y = centre.y - h / 2 + s * 0.05f
+    drawRoundRect(b, Offset(x - s * 0.01f, y - s * 0.09f), Size(w + s * 0.02f, s * 0.09f), CornerRadius(s * 0.02f)) // bouchon
+    drawRoundRect(face, Offset(x, y), Size(w, h), CornerRadius(s * 0.05f))
+    drawRoundRect(a, Offset(x, y + h * 0.3f), Size(w, h * 0.42f)) // étiquette
+    drawCircle(Color.White, s * 0.03f, Offset(centre.x, y + h * 0.51f))
+    drawLine(Color.White, Offset(centre.x - s * 0.055f, y + h * 0.51f), Offset(centre.x + s * 0.055f, y + h * 0.51f), s * 0.014f)
+    // quelques comprimés autour
+    drawCircle(b, s * 0.035f, Offset(x - s * 0.1f, y + h * 0.9f))
+    drawCircle(a, s * 0.03f, Offset(x + w + s * 0.1f, y + h * 0.82f))
 }

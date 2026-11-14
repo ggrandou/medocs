@@ -63,9 +63,10 @@ fun ListeScreen(
     ) { padding ->
         when {
             lignes == null -> Unit
-            lignes.isEmpty() -> Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center) {
+            lignes.isEmpty() -> Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                IllustrationPage(Dessin.FLACON)
                 Text("Aucun médicament.", style = MaterialTheme.typography.titleMedium)
-                Text("Touche « Ajouter un médicament » pour commencer.", style = MaterialTheme.typography.bodyMedium)
+                Text("Touche « Ajouter un médicament » pour commencer.", style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),

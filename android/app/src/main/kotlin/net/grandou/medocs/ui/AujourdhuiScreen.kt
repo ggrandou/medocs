@@ -94,13 +94,14 @@ fun AujourdhuiScreen(
     ) { padding ->
         if (etat == null) return@Scaffold
         if (etat.lignes.isEmpty() && etat.ponctuelles.isEmpty() && etat.manqueesRecentes.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center) {
+            Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 alertes.forEach { BandeauAutorisation(it) }
+                IllustrationPage(Dessin.CALENDRIER)
                 Text("Aucune prise prévue aujourd'hui.", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (medicaments.isEmpty()) "Ajoute d'abord un médicament dans l'onglet Médicaments."
                     else "Définis un planning depuis l'onglet Médicaments (touche un médicament, puis Planning).",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
             return@Scaffold
@@ -112,6 +113,13 @@ fun AujourdhuiScreen(
         ) {
             items(alertes.filter { it.critique }) { a -> BandeauAutorisation(a) }
             if (etat.manqueesRecentes.isNotEmpty()) item { BandeauManquees(etat.manqueesRecentes) }
+            // Journée terminée : toutes les prises du planning sont faites, sautées ou manquées
+            if (etat.lignes.isNotEmpty() && etat.lignes.none { it.etat.enAttente }) item {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    IllustrationPage(Dessin.TOUT_FAIT, 120.dp)
+                    Text("C'est tout pour aujourd'hui", style = MaterialTheme.typography.titleMedium)
+                }
+            }
             items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
                 CarteOccurrence(l, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
