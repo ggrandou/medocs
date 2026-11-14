@@ -31,12 +31,17 @@ fun AideRappelsDialog(onFermer: () -> Unit, onReglagesBatterie: () -> Unit, onRe
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text("À faire une fois :", fontWeight = FontWeight.SemiBold)
-                Text("1. Ouvre les réglages de la batterie (bouton ci-dessous) et choisis « Sans restriction » ou « Non optimisée » pour Mes Médocs.", style = MaterialTheme.typography.bodyMedium)
-                Text("2. Sur Samsung : Paramètres > Batterie > Limites d'utilisation en arrière-plan. Désactive « Mettre en veille les applis inutilisées » et ajoute Mes Médocs à « Applications jamais en veille ».", style = MaterialTheme.typography.bodyMedium)
-                Text("3. Si ton téléphone propose de mettre l'application en « veille profonde », refuse.", style = MaterialTheme.typography.bodyMedium)
-                Text("4. Laisse les notifications et les alarmes exactes autorisées pour l'application.", style = MaterialTheme.typography.bodyMedium)
-                OutlinedButton(onClick = onReglagesBatterie) { Text("Ouvrir les réglages de la batterie") }
+                Text("1. Le plus simple : ouvre les réglages de l'application (premier bouton), touche « Batterie », puis choisis « Sans restriction ».", style = MaterialTheme.typography.bodyMedium)
                 OutlinedButton(onClick = onReglagesApp) { Text("Ouvrir les réglages de l'application") }
+                Text(
+                    "2. Ou, dans la liste d'optimisation de la batterie (second bouton), touche le filtre en haut et choisis « Toutes les applications » : " +
+                        "par défaut, la liste ne montre que les applications déjà exclues, donc pas celle-ci. Puis choisis « Ne pas optimiser » pour Mes Médocs.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedButton(onClick = onReglagesBatterie) { Text("Ouvrir la liste d'optimisation de la batterie") }
+                Text("3. Sur Samsung, en plus : Paramètres > Batterie > Limites d'utilisation en arrière-plan. Désactive « Mettre en veille les applis inutilisées » et ajoute Mes Médocs à « Applications jamais en veille ».", style = MaterialTheme.typography.bodyMedium)
+                Text("4. Si ton téléphone propose de mettre l'application en « veille profonde », refuse.", style = MaterialTheme.typography.bodyMedium)
+                Text("5. Laisse les notifications et les alarmes exactes autorisées pour l'application.", style = MaterialTheme.typography.bodyMedium)
             }
         },
         confirmButton = { TextButton(onClick = onFermer) { Text("Fermer") } },
