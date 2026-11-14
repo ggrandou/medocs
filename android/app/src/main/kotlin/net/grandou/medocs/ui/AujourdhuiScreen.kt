@@ -3,6 +3,8 @@ package net.grandou.medocs.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -96,13 +101,13 @@ fun AujourdhuiScreen(
             contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(alertes) { a -> BandeauAutorisation(a) }
+            items(alertes.filter { it.critique }) { a -> BandeauAutorisation(a) }
             if (etat.manqueesRecentes.isNotEmpty()) item { BandeauManquees(etat.manqueesRecentes) }
             items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
                 CarteOccurrence(l, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
             if (etat.ponctuelles.isNotEmpty()) {
-                item { Text("Prises hors planning", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall) }
+                item { Text("Prises hors planning", Modifier.padding(top = 8.dp).semantics { heading() }, style = MaterialTheme.typography.titleSmall) }
                 items(etat.ponctuelles, key = { "p${it.prise.id}" }) { p ->
                     Card(Modifier.fillMaxWidth()) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -115,6 +120,7 @@ fun AujourdhuiScreen(
                     }
                 }
             }
+            items(alertes.filter { !it.critique }) { a -> BandeauAutorisation(a) }
         }
     }
 
@@ -138,6 +144,7 @@ fun AujourdhuiScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CarteOccurrence(
     l: LigneAujourdhui,
@@ -155,10 +162,12 @@ private fun CarteOccurrence(
     }
     Card(Modifier.fillMaxWidth(), colors = couleurs) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          // Heure, nom, dose et état forment UNE phrase pour TalkBack ; les boutons restent des éléments à part
+          Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(o.heure.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Vignette(l.medicament.photoPath, 56.dp)
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(l.medicament.nom, style = MaterialTheme.typography.titleMedium)
                     Text(formaterAvecUnite(o.quantite, l.medicament.unite), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -172,14 +181,17 @@ private fun CarteOccurrence(
                 EtatOccurrence.MANQUEE -> "Manquée"
             }
             statut?.let { Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
+          }
             if (l.etat.enAttente) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onPrendre(l) }) { Text("Pris") }
-                    OutlinedButton(onClick = onReporter) { Text("Reporter") }
-                    OutlinedButton(onClick = { onSauter(l) }) { Text("Sauter") }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Libellés complets : « Pris » seul ne dit pas de quelle prise il s'agit quand TalkBack parcourt les boutons
+                    val quoi = "${l.medicament.nom}, ${o.heure}"
+                    Button(onClick = { onPrendre(l) }, Modifier.semantics { contentDescription = "Pris : $quoi" }) { Text("Pris") }
+                    OutlinedButton(onClick = onReporter, Modifier.semantics { contentDescription = "Reporter : $quoi" }) { Text("Reporter") }
+                    OutlinedButton(onClick = { onSauter(l) }, Modifier.semantics { contentDescription = "Sauter : $quoi" }) { Text("Sauter") }
                 }
             } else {
-                l.prise?.let { TextButton(onClick = { onAnnuler(it) }) { Text("Annuler") } }
+                l.prise?.let { TextButton(onClick = { onAnnuler(it) }, Modifier.semantics { contentDescription = "Annuler : ${l.medicament.nom}, ${o.heure}" }) { Text("Annuler") } }
             }
         }
     }
@@ -216,14 +228,19 @@ private fun HorsPlanningDialog(medicaments: List<Medicament>, onFermer: () -> Un
 }
 
 /** Autorisation système manquante qui empêche les rappels de fonctionner correctement. */
-data class AlerteAutorisation(val message: String, val bouton: String, val ignorer: (() -> Unit)? = null, val action: () -> Unit)
+/**
+ * [critique] : les rappels ne fonctionnent pas du tout sans cela (ex. notifications désactivées) ; le bandeau reste en tête.
+ * Les astuces (batterie, alarmes exactes) passent après les prises du jour, qui sont l'essentiel de l'écran.
+ */
+data class AlerteAutorisation(val message: String, val bouton: String, val critique: Boolean = false, val ignorer: (() -> Unit)? = null, val action: () -> Unit)
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BandeauAutorisation(a: AlerteAutorisation) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(a.message, style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 OutlinedButton(onClick = a.action) { Text(a.bouton) }
                 a.ignorer?.let { TextButton(onClick = it) { Text("Ne plus afficher") } }
             }

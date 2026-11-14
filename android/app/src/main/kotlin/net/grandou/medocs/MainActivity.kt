@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.grandou.medocs.ui.AjoutScreen
 import net.grandou.medocs.rappels.Moteur
@@ -136,8 +137,8 @@ class MainActivity : ComponentActivity() {
                     medicamentPlanning != null -> PlanningScreen(vm, medicamentPlanning, onRetour = { planningDe = 0L })
                     else -> Scaffold(bottomBar = {
                         NavigationBar {
-                            NavigationBarItem(onglet == 0, { onglet = 0 }, icon = { Text("📅") }, label = { Text("Aujourd'hui") })
-                            NavigationBarItem(onglet == 1, { onglet = 1 }, icon = { Text("💊") }, label = { Text("Médicaments") })
+                            NavigationBarItem(onglet == 0, { onglet = 0 }, icon = { Text("📅", Modifier.clearAndSetSemantics {}) }, label = { Text("Aujourd'hui") })
+                            NavigationBarItem(onglet == 1, { onglet = 1 }, icon = { Text("💊", Modifier.clearAndSetSemantics {}) }, label = { Text("Médicaments") })
                         }
                     }) { padding ->
                         Box(Modifier.padding(bottom = padding.calculateBottomPadding())) {
@@ -156,6 +157,7 @@ class MainActivity : ComponentActivity() {
                                         ))
                                         if (!notifications) add(AlerteAutorisation(
                                             "Les notifications sont désactivées : aucun rappel ne s'affichera.", "Ouvrir les réglages",
+                                            critique = true,
                                         ) { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) })
                                         if (!alarmesExactes) add(AlerteAutorisation(
                                             "Alarmes exactes non autorisées : les rappels peuvent être retardés de plusieurs minutes, surtout téléphone en veille.",

@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -141,6 +143,7 @@ fun ListeScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
     val m = l.medicament
@@ -148,11 +151,11 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
     else CardDefaults.cardColors()
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = couleurs) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          Vignette(m.photoPath, 72.dp)
+          Vignette(m.photoPath, 72.dp) // décorative : le nom est lu à côté
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(m.nom, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             m.substances?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Stock : ${formaterAvecUnite(l.stock, m.unite)}", style = MaterialTheme.typography.bodyLarge)
                 if (l.alerte) Text("Stock faible", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
@@ -173,6 +176,7 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StockDialog(
     ligne: LigneMedicament,
@@ -207,7 +211,7 @@ private fun StockDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Stock actuel : ${formaterAvecUnite(ligne.stock, m.unite)}")
                 TextButton(onClick = onPlanning) { Text("Planning des prises…") }
-                Row {
+                FlowRow {
                     TextButton(onClick = onModifier) { Text("Modifier…") }
                     TextButton(onClick = onHistorique) { Text("Historique…") }
                 }
@@ -219,7 +223,7 @@ private fun StockDialog(
                     label = { Text("Quantité (${m.unite})") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(enabled = valeur != null && valeur > 0, onClick = { onAjouter(valeur!!) }) { Text("Ajouter") }
                     TextButton(enabled = valeur != null && valeur >= 0, onClick = { onDefinir(valeur!!) }) { Text("Définir le stock") }
                 }

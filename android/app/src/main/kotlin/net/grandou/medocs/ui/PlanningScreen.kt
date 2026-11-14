@@ -36,7 +36,15 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.grandou.medocs.data.Medicament
@@ -49,7 +57,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PlanningScreen(vm: AppViewModel, medicament: Medicament, onRetour: () -> Unit) {
     val plannings by vm.plannings(medicament.id).collectAsStateWithLifecycle(emptyList())
@@ -78,7 +86,7 @@ fun PlanningScreen(vm: AppViewModel, medicament: Medicament, onRetour: () -> Uni
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(resumePlanning(p, medicament.unite), style = MaterialTheme.typography.bodyLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { edition = p }) { Text("Modifier") }
                                 TextButton(onClick = { asupprimer = p.planning }) { Text("Supprimer") }
                             }
@@ -145,7 +153,7 @@ private fun FormulairePlanning(
         (fin == null || !fin!!.isBefore(debut))
 
     Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Rythme", style = MaterialTheme.typography.titleSmall)
+        Text("Rythme", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(recurrence == TypeRecurrence.QUOTIDIEN, { recurrence = TypeRecurrence.QUOTIDIEN }, { Text("Tous les jours") })
             FilterChip(recurrence == TypeRecurrence.JOURS_SEMAINE, { recurrence = TypeRecurrence.JOURS_SEMAINE }, { Text("Certains jours") })
@@ -166,16 +174,18 @@ private fun FormulairePlanning(
             )
         }
 
-        Text("Heures de prise", style = MaterialTheme.typography.titleSmall)
+        Text("Heures de prise", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall)
         for ((i, h) in heures.withIndex()) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { choisirHeure(h) }) { Text(h.heureEtat.toString()) }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedButton(onClick = { choisirHeure(h) }, Modifier.semantics { contentDescription = "Heure de prise : ${h.heureEtat}, toucher pour modifier" }) { Text(h.heureEtat.toString()) }
+                    TextButton(onClick = { heures.removeAt(i) }, Modifier.semantics { contentDescription = "Retirer l'heure ${h.heureEtat}" }) { Text("Retirer") }
+                }
                 OutlinedTextField(
-                    h.dose, { h.dose = it }, Modifier.weight(1f), singleLine = true,
-                    label = { Text("Dose (${medicament.unite})") },
+                    h.dose, { h.dose = it }, Modifier.fillMaxWidth(), singleLine = true,
+                    label = { Text("Dose à ${h.heureEtat} (${medicament.unite})") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
-                TextButton(onClick = { heures.removeAt(i) }) { Text("Retirer") }
             }
         }
         OutlinedButton(onClick = {
@@ -183,20 +193,22 @@ private fun FormulairePlanning(
             heures.add(HeureEditable(LocalTime.of(20, 0), derniere?.dose ?: "1"))
         }) { Text("+ Ajouter une heure") }
 
-        Text("Période", style = MaterialTheme.typography.titleSmall)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Début :")
-            OutlinedButton(onClick = { choisirDate(debut) { debut = it } }) { Text(formaterDate(debut)) }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Fin :")
-            OutlinedButton(onClick = { choisirDate(fin ?: debut) { fin = it } }) { Text(fin?.let(::formaterDate) ?: "Sans fin") }
+        Text("Période", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall)
+        Text("Début", style = MaterialTheme.typography.labelLarge)
+        OutlinedButton(onClick = { choisirDate(debut) { debut = it } }, Modifier.semantics { contentDescription = "Date de début : ${formaterDate(debut)}, toucher pour modifier" }) { Text(formaterDate(debut)) }
+        Text("Fin", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            OutlinedButton(onClick = { choisirDate(fin ?: debut) { fin = it } }, Modifier.semantics { contentDescription = "Date de fin : ${fin?.let(::formaterDate) ?: "aucune"}, toucher pour modifier" }) { Text(fin?.let(::formaterDate) ?: "Sans fin") }
             if (fin != null) TextButton(onClick = { fin = null }) { Text("Sans fin") }
         }
-        if (fin != null && fin!!.isBefore(debut)) Text("La date de fin précède le début.", color = MaterialTheme.colorScheme.error)
+        if (fin != null && fin!!.isBefore(debut)) Text("La date de fin précède le début.", Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }, color = MaterialTheme.colorScheme.error)
 
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Switch(actif, { actif = it })
+        // Toute la ligne est l'interrupteur : TalkBack lit « Planning actif, interrupteur, activé »
+        Row(
+            Modifier.fillMaxWidth().minimumInteractiveComponentSize().toggleable(value = actif, role = Role.Switch, onValueChange = { actif = it }),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Switch(actif, null)
             Text(if (actif) "Planning actif" else "Planning en pause")
         }
 

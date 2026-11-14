@@ -29,6 +29,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -38,9 +42,12 @@ import kotlinx.coroutines.withContext
 import net.grandou.medocs.photos.Photos
 import java.io.File
 
-/** Miniature carrée de la photo d'une boîte ; n'occupe aucune place s'il n'y a pas de photo. */
+/**
+ * Miniature carrée de la photo d'une boîte ; n'occupe aucune place s'il n'y a pas de photo.
+ * [description] null = image décorative (ignorée par TalkBack, parce que le nom du médicament est déjà lu à côté).
+ */
 @Composable
-fun Vignette(nom: String?, cote: Dp, modifier: Modifier = Modifier) {
+fun Vignette(nom: String?, cote: Dp, modifier: Modifier = Modifier, description: String? = null) {
     if (nom == null) return
     val contexte = LocalContext.current
     val densite = LocalContext.current.resources.displayMetrics.density
@@ -49,7 +56,7 @@ fun Vignette(nom: String?, cote: Dp, modifier: Modifier = Modifier) {
     }
     image?.let {
         Image(
-            it, contentDescription = "Photo de la boîte", contentScale = ContentScale.Crop,
+            it, contentDescription = description, contentScale = ContentScale.Crop,
             modifier = modifier.size(cote).clip(RoundedCornerShape(8.dp)),
         )
     }
@@ -77,8 +84,8 @@ fun ChampPhoto(nom: String?, onChange: (String?) -> Unit) {
     val galerie = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) traiter(uri) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Photo de la boîte (facultatif)", style = MaterialTheme.typography.titleSmall)
-        Vignette(nom, 120.dp)
+        Text("Photo de la boîte (facultatif)", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall)
+        Vignette(nom, 120.dp, description = "Aperçu de la photo de la boîte")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 try { camera.launch(uriCapture) } catch (e: ActivityNotFoundException) { erreur = "Aucune application photo disponible." }
@@ -90,6 +97,7 @@ fun ChampPhoto(nom: String?, onChange: (String?) -> Unit) {
             "La photo reste sur ce téléphone, réduite et sans position GPS.",
             style = MaterialTheme.typography.bodySmall,
         )
-        erreur?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        // liveRegion : TalkBack annonce l'erreur dès qu'elle apparaît
+        erreur?.let { Text(it, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }
