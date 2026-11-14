@@ -42,6 +42,7 @@ fun ListeScreen(
     lignes: List<LigneMedicament>?,
     onAjouter: () -> Unit,
     onProtoAlarmes: () -> Unit,
+    onPlanning: (LigneMedicament) -> Unit,
     onAjouterStock: (LigneMedicament, Double) -> Unit,
     onDefinirStock: (LigneMedicament, Double) -> Unit,
     onSupprimer: (LigneMedicament) -> Unit,
@@ -50,6 +51,7 @@ fun ListeScreen(
     var selection by remember { mutableStateOf<LigneMedicament?>(null) }
 
     Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Mes médicaments") },
@@ -86,6 +88,7 @@ fun ListeScreen(
         StockDialog(
             ligne = l,
             onFermer = { selection = null },
+            onPlanning = { onPlanning(l); selection = null },
             onAjouter = { onAjouterStock(l, it); selection = null },
             onDefinir = { onDefinirStock(l, it); selection = null },
             onSupprimer = { onSupprimer(l); selection = null },
@@ -126,6 +129,7 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
 private fun StockDialog(
     ligne: LigneMedicament,
     onFermer: () -> Unit,
+    onPlanning: () -> Unit,
     onAjouter: (Double) -> Unit,
     onDefinir: (Double) -> Unit,
     onSupprimer: () -> Unit,
@@ -152,6 +156,7 @@ private fun StockDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Stock actuel : ${formaterAvecUnite(ligne.stock, m.unite)}")
+                TextButton(onClick = onPlanning) { Text("Planning des prises…") }
                 m.unitesParBoite?.let { boite ->
                     TextButton(onClick = { onAjouter(boite) }) { Text("Ajouter une boîte (+${formaterAvecUnite(boite, m.unite)})") }
                 }

@@ -30,6 +30,7 @@ interface PlanningDao {
     @Insert suspend fun inserer(p: Planning): Long
     @Insert suspend fun insererHeures(h: List<PlanningHeure>)
     @Update suspend fun modifier(p: Planning)
+    @Delete suspend fun supprimer(p: Planning)
 
     @Query("DELETE FROM planning_heure WHERE planningId = :planningId")
     suspend fun supprimerHeures(planningId: Long)
@@ -77,6 +78,14 @@ interface PriseDao {
 
     @Query("SELECT * FROM prise WHERE medicamentId = :medicamentId ORDER BY horodatage DESC LIMIT :limite")
     fun observerJournal(medicamentId: Long, limite: Int = 200): Flow<List<Prise>>
+
+    /** Occurrences planifiées d'un jour, quel que soit leur statut. */
+    @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue = :date")
+    fun observerPlanifieesDuJour(date: LocalDate): Flow<List<Prise>>
+
+    /** Prises hors planning dans l'intervalle [debut, fin[ (epoch ms). */
+    @Query("SELECT * FROM prise WHERE planningHeureId IS NULL AND horodatage >= :debut AND horodatage < :fin ORDER BY horodatage")
+    fun observerPonctuellesEntre(debut: Long, fin: Long): Flow<List<Prise>>
 
     @Query("SELECT * FROM prise WHERE statut = 'REPORTEE'")
     suspend fun reportees(): List<Prise>

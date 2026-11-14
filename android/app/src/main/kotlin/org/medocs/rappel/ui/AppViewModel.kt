@@ -6,6 +6,13 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +25,18 @@ import org.medocs.rappel.bdpm.PresentationBdpm
 import org.medocs.rappel.bdpm.SpecialiteBdpm
 import org.medocs.rappel.data.AppDatabase
 import org.medocs.rappel.data.Medicament
+import org.medocs.rappel.data.Planning
+import org.medocs.rappel.data.PlanningAvecHeures
+import org.medocs.rappel.data.PlanningHeure
+import org.medocs.rappel.data.Prise
 import org.medocs.rappel.data.Repository
+import org.medocs.rappel.data.StatutPrise
+import org.medocs.rappel.domain.EtatOccurrence
+import org.medocs.rappel.domain.Occurrence
+import org.medocs.rappel.domain.etatOccurrence
+import org.medocs.rappel.domain.occurrencesDuJour
+import java.time.LocalDateTime
+import java.time.ZoneId
 import org.medocs.rappel.domain.ProjectionStock
 import org.medocs.rappel.domain.projeterStock
 import org.medocs.rappel.domain.stockFaible
@@ -31,6 +49,22 @@ data class LigneMedicament(
     val alerte: Boolean,
 )
 
+data class LigneAujourdhui(
+    val occurrence: Occurrence,
+    val medicament: Medicament,
+    val prise: Prise?,
+    val etat: EtatOccurrence,
+)
+
+data class PonctuelleAujourdhui(val prise: Prise, val medicament: Medicament)
+
+data class EtatAujourdhui(
+    val date: java.time.LocalDate,
+    val lignes: List<LigneAujourdhui>,
+    val ponctuelles: List<PonctuelleAujourdhui>,
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase.get(app)
     private val repo = Repository(db)
@@ -51,6 +85,67 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             LigneMedicament(m, stock, projection, stockFaible(m, stock, projection))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // --- Écran « Aujourd'hui » ---
+    private val zone = ZoneId.systemDefault()
+    private fun debutDuJour(d: java.time.LocalDate) = d.atStartOfDay(zone).toInstant().toEpochMilli()
+
+    /** Horloge qui rafraîchit l'état (prises en retard) et détecte le changement de jour. */
+    private val horloge: Flow<LocalDateTime> = flow {
+        while (true) { emit(LocalDateTime.now()); delay(30_000) }
+    }
+    private val jour = horloge.map { it.toLocalDate() }.distinctUntilChanged()
+
+    val aujourdhui: StateFlow<EtatAujourdhui?> = combine(
+        db.medicaments().observerAvecStock(),
+        db.plannings().observerTousLesActifs(),
+        jour.flatMapLatest { db.prises().observerPlanifieesDuJour(it) },
+        jour.flatMapLatest { d -> db.prises().observerPonctuellesEntre(debutDuJour(d), debutDuJour(d.plusDays(1))) },
+        horloge,
+    ) { medicaments, plannings, planifiees, ponctuelles, maintenant ->
+        val parId = medicaments.associate { it.medicament.id to it.medicament }
+        val lignes = occurrencesDuJour(plannings, maintenant.toLocalDate()).mapNotNull { occ ->
+            val m = parId[occ.medicamentId] ?: return@mapNotNull null
+            val prise = planifiees.firstOrNull { it.planningHeureId == occ.planningHeure.id }
+            LigneAujourdhui(occ, m, prise, etatOccurrence(occ, prise, maintenant))
+        }
+        EtatAujourdhui(
+            maintenant.toLocalDate(), lignes,
+            ponctuelles.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun prendre(l: LigneAujourdhui) = viewModelScope.launch {
+        val o = l.occurrence
+        repo.prendre(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+    }
+
+    fun sauter(l: LigneAujourdhui) = viewModelScope.launch {
+        val o = l.occurrence
+        repo.sauter(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+    }
+
+    fun reporter(l: LigneAujourdhui, minutes: Int) = viewModelScope.launch {
+        val o = l.occurrence
+        val maintenant = System.currentTimeMillis()
+        repo.reporter(l.medicament.id, o.quantite, maintenant, maintenant + minutes * 60_000L, o.planningHeure.id, o.date, o.heure)
+    }
+
+    /** Annule la décision (prise, sautée, reportée) : l'occurrence redevient en attente et le stock est restitué. */
+    fun annuler(prise: Prise) = viewModelScope.launch { repo.annulerPrise(prise.id) }
+
+    fun priseHorsPlanning(m: Medicament, quantite: Double) = viewModelScope.launch {
+        repo.prendre(m.id, quantite, System.currentTimeMillis())
+    }
+
+    // --- Plannings ---
+    fun plannings(medicamentId: Long): Flow<List<PlanningAvecHeures>> = db.plannings().observerDuMedicament(medicamentId)
+
+    fun enregistrerPlanning(planning: Planning, heures: List<PlanningHeure>) = viewModelScope.launch {
+        repo.enregistrerPlanning(planning, heures)
+    }
+
+    fun supprimerPlanning(planning: Planning) = viewModelScope.launch { db.plannings().supprimer(planning) }
 
     // --- Recherche BDPM ---
     val resultats = MutableStateFlow<List<SpecialiteBdpm>>(emptyList())
