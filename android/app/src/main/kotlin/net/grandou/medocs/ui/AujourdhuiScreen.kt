@@ -291,6 +291,8 @@ private fun BoutonAction(libelle: String, icone: Int, description: String, modif
     ) {
         Icon(painterResource(icone), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-        Text(libelle)
+        // Jamais de retour à la ligne dans un bouton : la largeur minimale du bouton devient celle du mot entier, donc la
+        // rangée passe à la ligne suivante au lieu de comprimer le texte (« Reporter » se coupait en deux sur certains écrans)
+        Text(libelle, maxLines = 1, softWrap = false)
     }
 }
