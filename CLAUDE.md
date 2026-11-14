@@ -33,9 +33,11 @@ Périmètre volontairement restreint :
 - Tests du script : `python3 -I -m unittest discover -s scripts -v` ; un seul test : `python3 -I -m unittest discover -s scripts -k test_multiplicateur_en_tete`. Ils portent sur `parse_unites` (extraction du nombre d'unités depuis le libellé) ; ajouter un cas dans `scripts/test_build_bdpm.py` à chaque libellé BDPM mal interprété.
 
 - Application Android (dossier `android/`, Gradle 8.13 + AGP 8.13.2 + Kotlin 2.2.10, SDK dans `~/Android/Sdk`, JDK 21) : tout se fait en ligne de commande, Android Studio n'est pas nécessaire. Depuis `android/` : `./gradlew assembleDebug` puis `adb install -r app/build/outputs/apk/debug/app-debug.apk`. `local.properties` (chemin du SDK) est ignoré par git : le recréer avec `sdk.dir=...` sur une autre machine.
+- **Ordre de build** : la base BDPM est embarquée en assets depuis `data/build/bdpm.sqlite` (tâche Gradle `copierBdpm`, échoue avec un message clair si le fichier manque) : lancer `scripts/build_bdpm.py` avant `./gradlew assembleDebug`. Au premier lancement, `bdpm/Bdpm.kt` copie la base dans `filesDir` (recopiée à chaque mise à jour de l'app) et l'ouvre en lecture seule.
+- **Versions figées** : seules les plateformes Android 34 et 36 sont installées et AGP 8.13.2 recommande `compileSdk` 36 ; les Compose récents exigent 37. Le BOM Compose est donc épinglé à `2025.12.00` : ne pas le monter sans installer la plateforme 37 et passer à un AGP compatible.
 - Tests Kotlin : `./gradlew testDebugUnitTest` (JVM, logique de `domain/`, sans téléphone) ; `./gradlew connectedDebugAndroidTest` (sur l'appareil, base Room en mémoire). Attention : ce dernier **désinstalle l'application** à la fin (perte des autorisations et du journal du prototype) : réinstaller ensuite avec `adb install`.
 - Appareil de test : Galaxy S23 Ultra, Android 17 (One UI, gestion batterie agressive à tester).
-- `android/` contient pour l'instant un **prototype d'alarmes sans aucune dépendance** (Views classiques, pas encore Compose) : il compare `setExactAndAllowWhileIdle` et `setAlarmClock`, journalise l'écart entre heure prévue et heure réelle, et reprogramme après redémarrage/changement d'heure.
+- `ProtoAlarmesActivity` est le **prototype d'alarmes** (Views classiques, accessible depuis le menu « Plus » de l'app) : il compare `setExactAndAllowWhileIdle` et `setAlarmClock`, journalise l'écart entre heure prévue et heure réelle, et reprogramme après redémarrage/changement d'heure.
 
 ## Données BDPM
 

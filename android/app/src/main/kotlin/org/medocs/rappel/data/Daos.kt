@@ -40,6 +40,10 @@ interface PlanningDao {
 
     @Transaction
     @Query("SELECT * FROM planning WHERE actif = 1")
+    fun observerTousLesActifs(): Flow<List<PlanningAvecHeures>>
+
+    @Transaction
+    @Query("SELECT * FROM planning WHERE actif = 1")
     suspend fun tousLesActifs(): List<PlanningAvecHeures>
 
     @Transaction
@@ -64,6 +68,12 @@ interface PriseDao {
            AND statut IN ('PRISE', 'SAUTEE', 'MANQUEE') AND datePrevue >= :depuis"""
     )
     suspend fun traiteesDepuis(depuis: LocalDate): List<Prise>
+
+    @Query(
+        """SELECT * FROM prise WHERE planningHeureId IS NOT NULL
+           AND statut IN ('PRISE', 'SAUTEE', 'MANQUEE') AND datePrevue >= :depuis"""
+    )
+    fun observerTraiteesDepuis(depuis: LocalDate): Flow<List<Prise>>
 
     @Query("SELECT * FROM prise WHERE medicamentId = :medicamentId ORDER BY horodatage DESC LIMIT :limite")
     fun observerJournal(medicamentId: Long, limite: Int = 200): Flow<List<Prise>>

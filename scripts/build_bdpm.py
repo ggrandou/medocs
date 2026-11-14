@@ -122,7 +122,9 @@ CREATE TABLE specialite (
     nom TEXT NOT NULL,
     nom_recherche TEXT NOT NULL,
     forme TEXT,
-    voies TEXT
+    voies TEXT,
+    substances TEXT,
+    substances_recherche TEXT
 );
 CREATE TABLE substance (
     cis INTEGER NOT NULL REFERENCES specialite(cis),
@@ -165,7 +167,7 @@ def build(raw_dir: Path, out: Path):
         cis = int(r[0])
         cis_ok.add(cis)
         db.execute(
-            "INSERT INTO specialite VALUES (?,?,?,?,?)",
+            "INSERT INTO specialite (cis, nom, nom_recherche, forme, voies) VALUES (?,?,?,?,?)",
             (cis, r[1], normalize(r[1]), r[2], r[3]),
         )
 
@@ -180,9 +182,17 @@ def build(raw_dir: Path, out: Path):
         if nature == "FT" or key not in comp:
             comp[key] = (nature, nom, dosage)
     ordre = {}
+    textes = {}
     for (cis, liaison), (_, nom, dosage) in sorted(comp.items(), key=lambda kv: (kv[0][0], int(kv[0][1] or 0))):
         ordre[cis] = ordre.get(cis, 0) + 1
         db.execute("INSERT INTO substance VALUES (?,?,?,?)", (cis, ordre[cis], nom, dosage or None))
+        textes.setdefault(cis, []).append((nom, dosage))
+    # Texte d'affichage et texte de recherche (sans accents) des molécules, par spécialité
+    for cis, subs in textes.items():
+        affichage = " + ".join(f"{n} {d}".strip() for n, d in subs)
+        recherche = " ".join(normalize(n) for n, _ in subs)
+        db.execute("UPDATE specialite SET substances = ?, substances_recherche = ? WHERE cis = ?",
+                   (affichage, recherche, cis))
 
     # Présentations actives et commercialisées
     total = parsed = fiables = 0

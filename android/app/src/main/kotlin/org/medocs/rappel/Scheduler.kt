@@ -31,7 +31,7 @@ object Scheduler {
             }
             Mode.ALARM_CLOCK -> {
                 val show = PendingIntent.getActivity(
-                    c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+                    c, 0, Intent(c, ProtoAlarmesActivity::class.java), PendingIntent.FLAG_IMMUTABLE
                 )
                 am.setAlarmClock(AlarmManager.AlarmClockInfo(p.triggerAt, show), pi(c, p))
                 true
