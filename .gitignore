@@ -29,3 +29,4 @@ data/build/
 __pycache__/
 *.pyc
 .venv/
+keystore.properties

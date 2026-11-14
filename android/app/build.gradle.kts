@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,9 +21,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Signature de release : lue dans android/keystore.properties (NON versionné, voir .gitignore) ; contenu :
+    //   storeFile=/chemin/absolu/vers/cle.jks   storePassword=...   keyAlias=...   keyPassword=...
+    // Sans ce fichier, `assembleRelease` produit un APK NON SIGNÉ (c'est ce qu'attend F-Droid, qui signe lui-même).
+    val signature = Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    signingConfigs {
+        if (signature.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(signature.getProperty("storeFile"))
+                storePassword = signature.getProperty("storePassword")
+                keyAlias = signature.getProperty("keyAlias")
+                keyPassword = signature.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true      // R8 : réduit et optimise le code
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     buildFeatures {
@@ -51,8 +74,9 @@ val copierBdpm = tasks.register<Copy>("copierBdpm") {
         }
     }
 }
+// Toute tâche qui lit les assets (fusion, lint, empaquetage) doit attendre la copie de la base BDPM
 tasks.configureEach {
-    if (name.startsWith("merge") && name.endsWith("Assets")) dependsOn(copierBdpm)
+    if (this !== copierBdpm.get() && (name.contains("Assets") || name.contains("Lint", ignoreCase = true))) dependsOn(copierBdpm)
 }
 
 room {
