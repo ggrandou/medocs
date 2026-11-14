@@ -17,25 +17,6 @@ import androidx.compose.ui.unit.dp
 /** À incrémenter si le texte change de façon significative : l'utilisateur doit alors le ré-accepter. */
 const val VERSION_AVERTISSEMENT = 1
 
-/**
- * Avertissement affiché au premier lancement (bloquant : ni retour ni clic extérieur ne le ferme) puis
- * consultable depuis « À propos ». [versionApp] est affichée en bas.
- */
-@Composable
-fun AvertissementDialog(premiereFois: Boolean, versionApp: String, onFermer: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = { if (!premiereFois) onFermer() },
-        properties = DialogProperties(dismissOnBackPress = !premiereFois, dismissOnClickOutside = !premiereFois),
-        title = { Text(if (premiereFois) "Avant de commencer" else "À propos et avertissement") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TexteAvertissement(versionApp)
-            }
-        },
-        confirmButton = { TextButton(onClick = onFermer) { Text(if (premiereFois) "J'ai compris" else "Fermer") } },
-    )
-}
-
 /** Texte de l'avertissement, partagé par la boîte « À propos » et la page du carrousel de prise en main. */
 @Composable
 fun TexteAvertissement(versionApp: String, resume: Boolean = false) {

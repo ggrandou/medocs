@@ -121,7 +121,8 @@ class AccessibiliteTest {
     )
 
     @Composable private fun plusScreen() = PlusScreen(
-        theme = "systeme", onTheme = {}, archives = emptyList(), onRestaurer = {}, onSauvegarde = {}, onPriseEnMain = {}, onAPropos = {}, onAideRappels = {}, onProtoAlarmes = {},
+        versionApp = "0.1.0", nbArchives = 2, theme = "systeme", onArchives = {}, onSauvegarde = {}, onApparence = {}, onPriseEnMain = {}, onAideRappels = {},
+        onAPropos = {}, onProtoAlarmes = {},
     )
 
     /** Témoin : un composant volontairement fautif DOIT être rejeté, sinon les autres tests ne prouveraient rien. */
@@ -175,8 +176,18 @@ class AccessibiliteTest {
     @Test fun listePolice200() = verifier("liste", 2f) { listeScreen() }
     @Test fun plusPoliceNormale() = verifier("plus", 1f) { plusScreen() }
     @Test fun plusPolice200() = verifier("plus", 2f) { plusScreen() }
-    @Test fun avertissementPoliceNormale() = verifier("avertissement", 1f, controleA11y = false) { AvertissementDialog(premiereFois = true, versionApp = "0.1.0") {} }
-    @Test fun avertissementPolice200() = verifier("avertissement", 2f, controleA11y = false) { AvertissementDialog(premiereFois = true, versionApp = "0.1.0") {} }
+    // Écrans complets ouverts depuis « Plus »
+    @Test fun aProposPoliceNormale() = verifier("apropos", 1f) { AProposScreen("0.1.0") {} }
+    @Test fun aProposPolice200() = verifier("apropos", 2f) { AProposScreen("0.1.0") {} }
+    @Test fun sauvegardePoliceNormale() = verifier("sauvegarde", 1f) { SauvegardeScreen({}, {}, {}) }
+    @Test fun sauvegardePolice200() = verifier("sauvegarde", 2f) { SauvegardeScreen({}, {}, {}) }
+    @Test fun aidePoliceNormale() = verifier("aide", 1f) { AideRappelsScreen({}, {}, {}) }
+    @Test fun aidePolice200() = verifier("aide", 2f) { AideRappelsScreen({}, {}, {}) }
+    @Test fun apparencePoliceNormale() = verifier("apparence", 1f) { ApparenceScreen("clair", {}, {}) }
+    @Test fun apparencePolice200() = verifier("apparence", 2f) { ApparenceScreen("clair", {}, {}) }
+    @Test fun archivesPoliceNormale() = verifier("archives", 1f) { ArchivesScreen(listOf(pantoprazole, doliprane), {}, {}) }
+    @Test fun archivesPolice200() = verifier("archives", 2f) { ArchivesScreen(listOf(pantoprazole, doliprane), {}, {}) }
+    @Test fun archivesVides() = verifier("archives-vide", 1f) { ArchivesScreen(emptyList(), {}, {}) }
 
 
     // --- Ce que TalkBack lit ---

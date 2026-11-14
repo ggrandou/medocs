@@ -30,11 +30,8 @@ import net.grandou.medocs.rappels.Notifications
 import androidx.activity.result.contract.ActivityResultContracts
 import net.grandou.medocs.ui.ImportDialog
 import net.grandou.medocs.ui.MessageDialog
-import net.grandou.medocs.ui.SauvegardeDialog
 import androidx.compose.runtime.remember
-import net.grandou.medocs.ui.AvertissementDialog
 import net.grandou.medocs.ui.VERSION_AVERTISSEMENT
-import net.grandou.medocs.ui.AideRappelsDialog
 import net.grandou.medocs.ui.Onboarding
 import net.grandou.medocs.ui.ReglagesRappels
 import net.grandou.medocs.ui.VERSION_ONBOARDING
@@ -46,6 +43,11 @@ import net.grandou.medocs.ui.AujourdhuiScreen
 import net.grandou.medocs.ui.HistoriqueScreen
 import net.grandou.medocs.ui.ListeScreen
 import net.grandou.medocs.ui.PlusScreen
+import net.grandou.medocs.ui.AProposScreen
+import net.grandou.medocs.ui.AideRappelsScreen
+import net.grandou.medocs.ui.ApparenceScreen
+import net.grandou.medocs.ui.ArchivesScreen
+import net.grandou.medocs.ui.SauvegardeScreen
 import net.grandou.medocs.ui.ModifierMedicamentScreen
 import net.grandou.medocs.ui.PlanningScreen
 
@@ -125,17 +127,9 @@ class MainActivity : ComponentActivity() {
                 var aPropos by rememberSaveable { mutableStateOf(false) }
                 val versionApp = remember { packageManager.getPackageInfo(packageName, 0).versionName ?: "" }
                 var revoirPriseEnMain by rememberSaveable { mutableStateOf(false) }
-                if (aPropos) AvertissementDialog(premiereFois = false, versionApp = versionApp) { aPropos = false }
+                var archivesOuvert by rememberSaveable { mutableStateOf(false) }
+                var apparence by rememberSaveable { mutableStateOf(false) }
                 val messageSauvegarde by vm.messageSauvegarde.collectAsStateWithLifecycle()
-                if (sauvegarde) SauvegardeDialog(
-                    onFermer = { sauvegarde = false },
-                    onExporter = { mdp ->
-                        motDePasseExport = mdp
-                        sauvegarde = false
-                        choisirFichierExport.launch("medocs-${java.time.LocalDate.now()}.medocs")
-                    },
-                    onImporter = { sauvegarde = false; choisirFichierImport.launch(arrayOf("*/*")) },
-                )
                 fichierAImporter?.let { uri ->
                     ImportDialog(
                         onAnnuler = { fichierAImporter = null },
@@ -147,11 +141,14 @@ class MainActivity : ComponentActivity() {
                 val lignes by vm.lignes.collectAsStateWithLifecycle()
                 val aujourdhui by vm.aujourdhui.collectAsStateWithLifecycle()
 
-                if (aide) AideRappelsDialog(
-                    onFermer = { aide = false },
-                    onReglagesBatterie = { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
-                    onReglagesApp = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
-                )
+                if (aide) {
+                    AideRappelsScreen(
+                        onRetour = { aide = false },
+                        onReglagesBatterie = { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+                        onReglagesApp = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
+                    )
+                    return@AppTheme
+                }
                 if (!onboardingVu || !avertissementAccepte || revoirPriseEnMain) {
                     Onboarding(
                         revoir = revoirPriseEnMain && onboardingVu && avertissementAccepte,
@@ -182,6 +179,22 @@ class MainActivity : ComponentActivity() {
                 val medicamentModif = lignes?.firstOrNull { it.medicament.id == modificationDe }?.medicament
                 val medicamentHisto = lignes?.firstOrNull { it.medicament.id == historiqueDe }?.medicament
                 when {
+                    aPropos -> AProposScreen(versionApp, onRetour = { aPropos = false })
+                    apparence -> ApparenceScreen(
+                        theme = prefsUi.getString("theme", "systeme") ?: "systeme",
+                        onTheme = { prefsUi.edit().putString("theme", it).apply(); recreate() },
+                        onRetour = { apparence = false },
+                    )
+                    archivesOuvert -> ArchivesScreen(archives, onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) }, onRetour = { archivesOuvert = false })
+                    sauvegarde -> SauvegardeScreen(
+                        onRetour = { sauvegarde = false },
+                        onExporter = { mdp ->
+                            motDePasseExport = mdp
+                            sauvegarde = false
+                            choisirFichierExport.launch("medocs-${java.time.LocalDate.now()}.medocs")
+                        },
+                        onImporter = { sauvegarde = false; choisirFichierImport.launch(arrayOf("*/*")) },
+                    )
                     medicamentModif != null -> ModifierMedicamentScreen(vm, medicamentModif, onRetour = { modificationDe = 0L })
                     medicamentHisto != null -> HistoriqueScreen(vm, medicamentHisto, onRetour = { historiqueDe = 0L })
                     ajout -> AjoutScreen(vm, onTermine = { ajout = false })
@@ -213,14 +226,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             } else if (onglet == 2) {
                                 PlusScreen(
+                                    versionApp = versionApp,
+                                    nbArchives = archives.size,
                                     theme = prefsUi.getString("theme", "systeme") ?: "systeme",
-                                    onTheme = { prefsUi.edit().putString("theme", it).apply(); recreate() },
-                                    archives = archives,
-                                    onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) },
+                                    onArchives = { archivesOuvert = true },
                                     onSauvegarde = { sauvegarde = true },
+                                    onApparence = { apparence = true },
                                     onPriseEnMain = { revoirPriseEnMain = true },
-                                    onAPropos = { aPropos = true },
                                     onAideRappels = { aide = true },
+                                    onAPropos = { aPropos = true },
                                     onProtoAlarmes = { startActivity(Intent(this@MainActivity, ProtoAlarmesActivity::class.java)) },
                                 )
                             } else {
