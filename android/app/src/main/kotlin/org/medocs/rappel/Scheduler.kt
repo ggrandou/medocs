@@ -12,7 +12,7 @@ object Scheduler {
 
     private fun alarmManager(c: Context) = c.getSystemService(AlarmManager::class.java)
 
-    fun canExact(c: Context) = alarmManager(c).canScheduleExactAlarms()
+    fun canExact(c: Context) = org.medocs.rappel.rappels.Moteur.alarmesExactesAutorisees(c)
 
     private fun pi(c: Context, p: Pending): PendingIntent {
         val i = Intent(c, AlarmReceiver::class.java)
@@ -25,7 +25,7 @@ object Scheduler {
         val am = alarmManager(c)
         return when (p.mode) {
             Mode.EXACT -> {
-                if (!am.canScheduleExactAlarms()) return false
+                if (!canExact(c)) return false
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, p.triggerAt, pi(c, p))
                 true
             }

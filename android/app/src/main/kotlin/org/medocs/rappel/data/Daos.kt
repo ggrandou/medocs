@@ -18,6 +18,14 @@ interface MedicamentDao {
     @Query("SELECT * FROM medicament WHERE archive = 0")
     suspend fun tousActifs(): List<Medicament>
 
+    // --- Sauvegarde : les clés étrangères en cascade vident aussi plannings, prises et mouvements ---
+    @Query("SELECT * FROM medicament ORDER BY id") suspend fun tous(): List<Medicament>
+    @Query("DELETE FROM medicament") suspend fun toutSupprimer()
+    @Insert suspend fun insererTous(l: List<Medicament>)
+
+    @Query("SELECT * FROM medicament WHERE archive = 1 ORDER BY nom COLLATE NOCASE")
+    fun observerArchives(): Flow<List<Medicament>>
+
     @Query("SELECT * FROM medicament WHERE id = :id")
     suspend fun parId(id: Long): Medicament?
 
@@ -34,6 +42,10 @@ interface PlanningDao {
     @Insert suspend fun insererHeures(h: List<PlanningHeure>)
     @Update suspend fun modifier(p: Planning)
     @Delete suspend fun supprimer(p: Planning)
+
+    @Query("SELECT * FROM planning ORDER BY id") suspend fun tousLesPlannings(): List<Planning>
+    @Query("SELECT * FROM planning_heure ORDER BY id") suspend fun toutesLesHeures(): List<PlanningHeure>
+    @Insert suspend fun insererPlannings(l: List<Planning>)
 
     @Query("DELETE FROM planning_heure WHERE planningId = :planningId")
     suspend fun supprimerHeures(planningId: Long)
@@ -66,6 +78,9 @@ interface PriseDao {
     @Query("SELECT * FROM prise WHERE planningHeureId = :planningHeureId AND datePrevue = :date")
     suspend fun occurrence(planningHeureId: Long, date: LocalDate): Prise?
 
+    @Query("SELECT * FROM prise ORDER BY id") suspend fun toutes(): List<Prise>
+    @Insert suspend fun insererToutes(l: List<Prise>)
+
     /** Occurrences planifiées déjà traitées (prise, sautée, manquée) : exclues des projections de stock. */
     @Query(
         """SELECT * FROM prise WHERE planningHeureId IS NOT NULL
@@ -86,6 +101,10 @@ interface PriseDao {
     @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue = :date")
     fun observerPlanifieesDuJour(date: LocalDate): Flow<List<Prise>>
 
+    /** Occurrences manquées des derniers jours (strictement avant [avant]), pour les signaler à l'utilisateur. */
+    @Query("SELECT * FROM prise WHERE statut = 'MANQUEE' AND datePrevue >= :depuis AND datePrevue < :avant ORDER BY datePrevue DESC, heurePrevue DESC")
+    fun observerManquees(depuis: LocalDate, avant: LocalDate): Flow<List<Prise>>
+
     /** Prises hors planning dans l'intervalle [debut, fin[ (epoch ms). */
     @Query("SELECT * FROM prise WHERE planningHeureId IS NULL AND horodatage >= :debut AND horodatage < :fin ORDER BY horodatage")
     fun observerPonctuellesEntre(debut: Long, fin: Long): Flow<List<Prise>>
@@ -101,6 +120,13 @@ interface PriseDao {
 @Dao
 interface StockDao {
     @Insert suspend fun inserer(m: StockMouvement): Long
+
+    @Query("SELECT * FROM stock_mouvement ORDER BY id") suspend fun tous(): List<StockMouvement>
+    @Insert suspend fun insererTous(l: List<StockMouvement>)
+
+    /** Achats et corrections (les mouvements PRISE se lisent dans le journal des prises). */
+    @Query("SELECT * FROM stock_mouvement WHERE medicamentId = :medicamentId AND type != 'PRISE' ORDER BY horodatage DESC")
+    fun observerMouvements(medicamentId: Long): Flow<List<StockMouvement>>
 
     @Query("SELECT COALESCE(SUM(delta), 0) FROM stock_mouvement WHERE medicamentId = :medicamentId")
     suspend fun stock(medicamentId: Long): Double

@@ -24,7 +24,11 @@ import org.medocs.rappel.bdpm.Bdpm
 import org.medocs.rappel.bdpm.PresentationBdpm
 import org.medocs.rappel.bdpm.SpecialiteBdpm
 import org.medocs.rappel.data.AppDatabase
+import org.medocs.rappel.data.Chiffrement
 import org.medocs.rappel.data.Medicament
+import org.medocs.rappel.data.MotDePasseIncorrect
+import org.medocs.rappel.data.SauvegardeInvalide
+import org.medocs.rappel.data.SauvegardeJson
 import org.medocs.rappel.data.Planning
 import org.medocs.rappel.data.PlanningAvecHeures
 import org.medocs.rappel.data.PlanningHeure
@@ -33,6 +37,8 @@ import org.medocs.rappel.data.Repository
 import org.medocs.rappel.data.StatutPrise
 import org.medocs.rappel.rappels.Moteur
 import org.medocs.rappel.rappels.Notifications
+import org.medocs.rappel.domain.EntreeHistorique
+import org.medocs.rappel.domain.fusionnerHistorique
 import org.medocs.rappel.domain.EtatOccurrence
 import org.medocs.rappel.domain.Occurrence
 import org.medocs.rappel.domain.etatOccurrence
@@ -64,6 +70,8 @@ data class EtatAujourdhui(
     val date: java.time.LocalDate,
     val lignes: List<LigneAujourdhui>,
     val ponctuelles: List<PonctuelleAujourdhui>,
+    /** Prises manquées hier ou avant-hier (aujourd'hui, elles sont déjà dans [lignes]). */
+    val manqueesRecentes: List<PonctuelleAujourdhui> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -121,6 +129,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             maintenant.toLocalDate(), lignes,
             ponctuelles.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } },
         )
+    }.let { base ->
+        combine(
+            base,
+            jour.flatMapLatest { d -> db.prises().observerManquees(d.minusDays(2), d) },
+            db.medicaments().observerAvecStock(),
+        ) { etat, manquees, medicaments ->
+            val parId = medicaments.associate { it.medicament.id to it.medicament }
+            etat.copy(manqueesRecentes = manquees.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } })
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun prendre(l: LigneAujourdhui) = viewModelScope.launch {
@@ -152,6 +169,48 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repo.prendre(m.id, quantite, System.currentTimeMillis())
         recaler()
     }
+
+    // --- Sauvegarde chiffrée (export / import d'un fichier choisi par l'utilisateur) ---
+    /** Résultat affiché à l'utilisateur après un export ou un import. */
+    val messageSauvegarde = MutableStateFlow<String?>(null)
+
+    fun exporter(uri: android.net.Uri, motDePasse: CharArray) = viewModelScope.launch(Dispatchers.IO) {
+        messageSauvegarde.value = try {
+            val donnees = repo.exporter()
+            val fichier = Chiffrement.chiffrer(SauvegardeJson.versJson(donnees).toByteArray(Charsets.UTF_8), motDePasse)
+            getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!.use { it.write(fichier) }
+            "Sauvegarde enregistrée : ${donnees.medicaments.size} médicament(s), ${donnees.prises.size} ligne(s) de journal."
+        } catch (e: Exception) {
+            "Échec de la sauvegarde : ${e.message ?: e.javaClass.simpleName}"
+        } finally { motDePasse.fill('\u0000') }
+    }
+
+    fun importer(uri: android.net.Uri, motDePasse: CharArray) = viewModelScope.launch(Dispatchers.IO) {
+        messageSauvegarde.value = try {
+            val octets = getApplication<Application>().contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+            val donnees = SauvegardeJson.depuisJson(String(Chiffrement.dechiffrer(octets, motDePasse), Charsets.UTF_8))
+            repo.remplacerPar(donnees)
+            recaler()
+            "Données restaurées : ${donnees.medicaments.size} médicament(s), ${donnees.prises.size} ligne(s) de journal."
+        } catch (e: MotDePasseIncorrect) {
+            "Mot de passe incorrect, ou fichier modifié. Rien n'a été changé."
+        } catch (e: SauvegardeInvalide) {
+            "Fichier refusé : ${e.message}. Rien n'a été changé."
+        } catch (e: Exception) {
+            "Échec de la restauration : ${e.message ?: e.javaClass.simpleName}. Rien n'a été changé."
+        } finally { motDePasse.fill('\u0000') }
+    }
+
+    // --- Édition, archives, historique ---
+    val archives: StateFlow<List<Medicament>> = db.medicaments().observerArchives()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun modifierMedicament(m: Medicament) = viewModelScope.launch { db.medicaments().modifier(m); recaler() }
+
+    fun historique(medicamentId: Long): Flow<List<EntreeHistorique>> = combine(
+        db.prises().observerJournal(medicamentId),
+        db.stock().observerMouvements(medicamentId),
+    ) { prises, mouvements -> fusionnerHistorique(prises, mouvements) }
 
     // --- Plannings ---
     fun plannings(medicamentId: Long): Flow<List<PlanningAvecHeures>> = db.plannings().observerDuMedicament(medicamentId)

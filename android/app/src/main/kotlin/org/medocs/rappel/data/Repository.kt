@@ -95,4 +95,19 @@ class Repository(private val db: AppDatabase) {
     private suspend fun sauverOccurrence(existante: Prise?, nouvelle: Prise): Long =
         if (existante == null) db.prises().inserer(nouvelle)
         else { db.prises().modifier(nouvelle.copy(id = existante.id)); existante.id }
+
+    /** Instantané cohérent de toutes les données de l'utilisateur (une seule transaction de lecture). */
+    suspend fun exporter(): Donnees = db.withTransaction {
+        Donnees(db.medicaments().tous(), db.plannings().tousLesPlannings(), db.plannings().toutesLesHeures(), db.prises().toutes(), db.stock().tous())
+    }
+
+    /** Remplace TOUTES les données par celles de la sauvegarde, de façon atomique (tout ou rien). */
+    suspend fun remplacerPar(d: Donnees) = db.withTransaction {
+        db.medicaments().toutSupprimer() // cascade : plannings, heures, prises, mouvements
+        db.medicaments().insererTous(d.medicaments)
+        db.plannings().insererPlannings(d.plannings)
+        db.plannings().insererHeures(d.heures)
+        db.prises().insererToutes(d.prises)
+        db.stock().insererTous(d.mouvements)
+    }
 }

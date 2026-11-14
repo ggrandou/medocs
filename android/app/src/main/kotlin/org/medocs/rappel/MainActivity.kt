@@ -26,11 +26,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.medocs.rappel.ui.AjoutScreen
 import org.medocs.rappel.rappels.Moteur
 import org.medocs.rappel.rappels.Notifications
+import androidx.activity.result.contract.ActivityResultContracts
+import org.medocs.rappel.ui.ImportDialog
+import org.medocs.rappel.ui.MessageDialog
+import org.medocs.rappel.ui.SauvegardeDialog
+import org.medocs.rappel.ui.AideRappelsDialog
 import org.medocs.rappel.ui.AlerteAutorisation
 import org.medocs.rappel.ui.AppTheme
 import org.medocs.rappel.ui.AppViewModel
 import org.medocs.rappel.ui.AujourdhuiScreen
+import org.medocs.rappel.ui.HistoriqueScreen
 import org.medocs.rappel.ui.ListeScreen
+import org.medocs.rappel.ui.ModifierMedicamentScreen
 import org.medocs.rappel.ui.PlanningScreen
 
 class MainActivity : ComponentActivity() {
@@ -39,11 +46,27 @@ class MainActivity : ComponentActivity() {
     // Rafraîchis à chaque retour dans l'app (l'utilisateur revient des réglages système)
     private var alarmesExactes by mutableStateOf(true)
     private var notifications by mutableStateOf(true)
+    private var batterieOptimisee by mutableStateOf(false)
+    private var aideIgnoree by mutableStateOf(false)
+    // Sauvegarde : le mot de passe saisi attend le retour du sélecteur de fichier ; il n'est jamais enregistré
+    private var motDePasseExport: CharArray? = null
+    private var fichierAImporter by mutableStateOf<android.net.Uri?>(null)
+
+    private val choisirFichierExport = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val mdp = motDePasseExport
+        motDePasseExport = null
+        if (uri != null && mdp != null) vm.exporter(uri, mdp) else mdp?.fill('\u0000')
+    }
+    private val choisirFichierImport = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> fichierAImporter = uri }
+
+    private val prefsUi by lazy { getSharedPreferences("ui", MODE_PRIVATE) }
 
     override fun onResume() {
         super.onResume()
         alarmesExactes = Moteur.alarmesExactesAutorisees(this)
         notifications = Notifications.autorisees(this)
+        batterieOptimisee = !getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+        aideIgnoree = prefsUi.getBoolean("aide_rappels_ignoree", false)
         vm.rafraichirRappels()
     }
 
@@ -58,11 +81,42 @@ class MainActivity : ComponentActivity() {
                 var onglet by rememberSaveable { mutableStateOf(0) }
                 var ajout by rememberSaveable { mutableStateOf(false) }
                 var planningDe by rememberSaveable { mutableLongStateOf(0L) } // id du médicament, 0 = aucun
+                var modificationDe by rememberSaveable { mutableLongStateOf(0L) }
+                var historiqueDe by rememberSaveable { mutableLongStateOf(0L) }
+                var aide by rememberSaveable { mutableStateOf(false) }
+                var sauvegarde by rememberSaveable { mutableStateOf(false) }
+                val messageSauvegarde by vm.messageSauvegarde.collectAsStateWithLifecycle()
+                if (sauvegarde) SauvegardeDialog(
+                    onFermer = { sauvegarde = false },
+                    onExporter = { mdp ->
+                        motDePasseExport = mdp
+                        sauvegarde = false
+                        choisirFichierExport.launch("medocs-${java.time.LocalDate.now()}.medocs")
+                    },
+                    onImporter = { sauvegarde = false; choisirFichierImport.launch(arrayOf("*/*")) },
+                )
+                fichierAImporter?.let { uri ->
+                    ImportDialog(
+                        onAnnuler = { fichierAImporter = null },
+                        onConfirmer = { mdp -> vm.importer(uri, mdp); fichierAImporter = null },
+                    )
+                }
+                messageSauvegarde?.let { MessageDialog(it) { vm.messageSauvegarde.value = null } }
+                val archives by vm.archives.collectAsStateWithLifecycle()
                 val lignes by vm.lignes.collectAsStateWithLifecycle()
                 val aujourdhui by vm.aujourdhui.collectAsStateWithLifecycle()
 
+                if (aide) AideRappelsDialog(
+                    onFermer = { aide = false },
+                    onReglagesBatterie = { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
+                    onReglagesApp = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
+                )
                 val medicamentPlanning = lignes?.firstOrNull { it.medicament.id == planningDe }?.medicament
+                val medicamentModif = lignes?.firstOrNull { it.medicament.id == modificationDe }?.medicament
+                val medicamentHisto = lignes?.firstOrNull { it.medicament.id == historiqueDe }?.medicament
                 when {
+                    medicamentModif != null -> ModifierMedicamentScreen(vm, medicamentModif, onRetour = { modificationDe = 0L })
+                    medicamentHisto != null -> HistoriqueScreen(vm, medicamentHisto, onRetour = { historiqueDe = 0L })
                     ajout -> AjoutScreen(vm, onTermine = { ajout = false })
                     medicamentPlanning != null -> PlanningScreen(vm, medicamentPlanning, onRetour = { planningDe = 0L })
                     else -> Scaffold(bottomBar = {
@@ -79,6 +133,12 @@ class MainActivity : ComponentActivity() {
                                     onPrendre = vm::prendre, onSauter = vm::sauter, onReporter = vm::reporter,
                                     onAnnuler = vm::annuler, onHorsPlanning = vm::priseHorsPlanning,
                                     alertes = buildList {
+                                        if (batterieOptimisee && !aideIgnoree) add(AlerteAutorisation(
+                                            "L'économie d'énergie du téléphone peut retarder ou bloquer tes rappels.",
+                                            "Voir comment l'éviter",
+                                            ignorer = { prefsUi.edit().putBoolean("aide_rappels_ignoree", true).apply(); aideIgnoree = true },
+                                            action = { aide = true },
+                                        ))
                                         if (!notifications) add(AlerteAutorisation(
                                             "Les notifications sont désactivées : aucun rappel ne s'affichera.", "Ouvrir les réglages",
                                         ) { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) })
@@ -93,7 +153,13 @@ class MainActivity : ComponentActivity() {
                                     lignes = lignes,
                                     onAjouter = { ajout = true },
                                     onProtoAlarmes = { startActivity(Intent(this@MainActivity, ProtoAlarmesActivity::class.java)) },
+                                    onAideRappels = { aide = true },
+                                    onSauvegarde = { sauvegarde = true },
                                     onPlanning = { planningDe = it.medicament.id },
+                                    onModifier = { modificationDe = it.medicament.id },
+                                    onHistorique = { historiqueDe = it.medicament.id },
+                                    archives = archives,
+                                    onRestaurer = { vm.modifierMedicament(it.copy(archive = false)) },
                                     onAjouterStock = { l, q -> vm.ajouterStock(l.medicament.id, q) },
                                     onDefinirStock = { l, q -> vm.definirStock(l.medicament.id, q) },
                                     onSupprimer = { vm.supprimer(it.medicament) },

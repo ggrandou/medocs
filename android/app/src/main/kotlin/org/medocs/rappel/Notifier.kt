@@ -17,7 +17,7 @@ object Notifier {
                 NotificationChannel(CHANNEL, "Rappels de prise", NotificationManager.IMPORTANCE_HIGH)
             )
         }
-        if (c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        if (!org.medocs.rappel.rappels.Notifications.autorisees(c)) {
             Store.log(c, "#$id notification NON affichée : permission refusée")
             return
         }

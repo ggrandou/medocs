@@ -79,7 +79,7 @@ fun AujourdhuiScreen(
         },
     ) { padding ->
         if (etat == null) return@Scaffold
-        if (etat.lignes.isEmpty() && etat.ponctuelles.isEmpty()) {
+        if (etat.lignes.isEmpty() && etat.ponctuelles.isEmpty() && etat.manqueesRecentes.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center) {
                 alertes.forEach { BandeauAutorisation(it) }
                 Text("Aucune prise prévue aujourd'hui.", style = MaterialTheme.typography.titleMedium)
@@ -97,6 +97,7 @@ fun AujourdhuiScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(alertes) { a -> BandeauAutorisation(a) }
+            if (etat.manqueesRecentes.isNotEmpty()) item { BandeauManquees(etat.manqueesRecentes) }
             items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
                 CarteOccurrence(l, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
@@ -214,14 +215,31 @@ private fun HorsPlanningDialog(medicaments: List<Medicament>, onFermer: () -> Un
 }
 
 /** Autorisation système manquante qui empêche les rappels de fonctionner correctement. */
-data class AlerteAutorisation(val message: String, val bouton: String, val action: () -> Unit)
+data class AlerteAutorisation(val message: String, val bouton: String, val ignorer: (() -> Unit)? = null, val action: () -> Unit)
 
 @Composable
 private fun BandeauAutorisation(a: AlerteAutorisation) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(a.message, style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = a.action) { Text(a.bouton) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = a.action) { Text(a.bouton) }
+                a.ignorer?.let { TextButton(onClick = it) { Text("Ne plus afficher") } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BandeauManquees(manquees: List<PonctuelleAujourdhui>) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Prises manquées ces derniers jours", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            for (m in manquees) {
+                val quand = m.prise.datePrevue?.let { formaterDate(it) } ?: ""
+                Text("$quand ${m.prise.heurePrevue ?: ""} — ${m.medicament.nom}", style = MaterialTheme.typography.bodyMedium)
+            }
+            Text("Détail et corrections : onglet Médicaments > Historique.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

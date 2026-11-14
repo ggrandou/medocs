@@ -32,7 +32,8 @@ object Moteur {
     private const val PREFS = "moteur"
     private val verrou = Mutex()
 
-    private val delaiMs get() = DELAI_MANQUE_MIN * 60_000L
+    /** Délai avant « manquée » : 120 min par défaut ; la pref `delai_manque_min` permet de le raccourcir pour les tests. */
+    private fun delaiMs(prefs: android.content.SharedPreferences) = prefs.getLong("delai_manque_min", DELAI_MANQUE_MIN) * 60_000L
 
     /**
      * @param traiter faux pour une simple replanification (après une modification de données par
@@ -43,13 +44,16 @@ object Moteur {
         val db = AppDatabase.get(ctx)
         val repo = Repository(db)
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val delaiMs = delaiMs(prefs)
         val zone = ZoneId.systemDefault()
         val maintenant = System.currentTimeMillis()
         val limite = maintenant + 2_000 // tolérance : une alarme ne se déclenche jamais en avance, mais on reste prudent
         val derniere = prefs.getLong("derniere", -1).takeIf { it >= 0 } ?: maintenant
         val aujourdhui = LocalDate.now(zone)
 
-        val plannings = db.plannings().tousLesActifs()
+        // Un médicament archivé ne génère plus ni rappel ni alerte
+        val idsActifs = db.medicaments().tousActifs().map { it.id }.toSet()
+        val plannings = db.plannings().tousLesActifs().filter { it.planning.medicamentId in idsActifs }
         var prises = db.prises().pourMoteur(aujourdhui.minusDays(3))
 
         if (traiter) {
@@ -101,7 +105,9 @@ object Moteur {
         if (dejaEnvoyees.size != avant) prefs.edit().putStringSet("alertes", dejaEnvoyees).apply()
     }
 
-    fun alarmesExactesAutorisees(ctx: Context) = ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+    /** Avant Android 12 (API 31), les alarmes exactes n'exigent aucune autorisation. */
+    fun alarmesExactesAutorisees(ctx: Context): Boolean =
+        android.os.Build.VERSION.SDK_INT < 31 || ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     /**
      * Alarme exacte si l'utilisateur a autorisé « Alarmes et rappels » (SCHEDULE_EXACT_ALARM, refusée
@@ -115,7 +121,7 @@ object Moteur {
         )
         if (instant == null) { am.cancel(pi); return }
         try {
-            if (am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instant, pi)
+            if (alarmesExactesAutorisees(ctx)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instant, pi)
             else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instant, pi)
         } catch (e: SecurityException) {
             // Autorisation retirée entre le test et l'appel : on dégrade plutôt que de planter

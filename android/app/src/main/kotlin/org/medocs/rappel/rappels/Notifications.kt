@@ -1,13 +1,11 @@
 package org.medocs.rappel.rappels
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import org.medocs.rappel.MainActivity
 import org.medocs.rappel.data.Medicament
@@ -36,8 +34,12 @@ object Notifications {
         return nm
     }
 
-    fun autorisees(c: Context): Boolean =
-        c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    /**
+     * Notifications activées pour l'app. `areNotificationsEnabled` couvre à la fois la permission
+     * d'exécution (Android 13+) et le réglage système des versions précédentes, où
+     * `checkSelfPermission(POST_NOTIFICATIONS)` renvoie « refusé » à tort.
+     */
+    fun autorisees(c: Context): Boolean = c.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
     private fun ouvrirApp(c: Context): PendingIntent =
         PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)

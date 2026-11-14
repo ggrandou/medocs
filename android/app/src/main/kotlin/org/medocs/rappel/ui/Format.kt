@@ -17,7 +17,7 @@ fun formaterQuantite(q: Double): String =
 
 /** « 1 comprimé », « 30 comprimés », « 50 ml ». */
 fun formaterAvecUnite(q: Double, unite: String): String {
-    val u = if (q > 1 && unite.lowercase() !in UNITES_INVARIABLES && !unite.endsWith("s") && !unite.endsWith("x")) "${unite}s" else unite
+    val u = if (Math.abs(q) > 1 && unite.lowercase() !in UNITES_INVARIABLES && !unite.endsWith("s") && !unite.endsWith("x")) "${unite}s" else unite
     return "${formaterQuantite(q)} $u"
 }
 

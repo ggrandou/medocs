@@ -119,4 +119,43 @@ class RepositoryTest {
         val heures = db.plannings().actifsDuMedicament(medId).single().heures
         assertEquals(listOf(LocalTime.of(9, 0), LocalTime.of(21, 0)), heures.map { it.heure }.sorted())
     }
+
+    @Test fun sauvegardeChiffreeAllerRetourSurLaVraieBase() = runBlocking {
+        repo.prendre(medId, 1.0, 1000, phId, jour, heure)
+        repo.reporter(medId, 1.0, 1500, 9000, phId, jour.plusDays(1), heure)
+        repo.prendre(medId, 0.5, 2000) // prise hors planning
+        repo.corrigerStock(medId, 12.0, 3000)
+        val avant = repo.exporter()
+
+        val fichier = Chiffrement.chiffrer(SauvegardeJson.versJson(avant).toByteArray(), "motdepasse".toCharArray())
+
+        // On abîme les données, puis on restaure depuis le fichier chiffré
+        db.medicaments().supprimer(db.medicaments().parId(medId)!!)
+        db.medicaments().inserer(Medicament(nom = "Intrus"))
+        repo.remplacerPar(SauvegardeJson.depuisJson(String(Chiffrement.dechiffrer(fichier, "motdepasse".toCharArray()))))
+
+        assertEquals(avant, repo.exporter())
+        assertEquals(12.0, db.stock().stock(medId), 0.0)
+    }
+
+    @Test fun restaurationRefuseeNeChangeRien() = runBlocking {
+        repo.prendre(medId, 1.0, 1000, phId, jour, heure)
+        val avant = repo.exporter()
+        val fichier = Chiffrement.chiffrer(SauvegardeJson.versJson(avant).toByteArray(), "bonmotdepasse".toCharArray())
+        try {
+            Chiffrement.dechiffrer(fichier, "mauvais".toCharArray())
+            org.junit.Assert.fail("aurait dû échouer")
+        } catch (_: MotDePasseIncorrect) {}
+        assertEquals(avant, repo.exporter())
+    }
+
+    @Test fun restaurationAtomiqueSiLesDonneesSontIncoherentes() = runBlocking {
+        val avant = repo.exporter()
+        val cassee = avant.copy(plannings = avant.plannings + Planning(id = 999, medicamentId = 12345, dateDebut = jour))
+        try {
+            repo.remplacerPar(SauvegardeJson.depuisJson(SauvegardeJson.versJson(cassee)))
+            org.junit.Assert.fail("aurait dû être refusée")
+        } catch (_: SauvegardeInvalide) {}
+        assertEquals(avant, repo.exporter()) // refus avant toute écriture
+    }
 }
