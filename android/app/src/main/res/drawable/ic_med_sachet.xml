@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sachet (poudre, granulés) : soudures haute et basse -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="M12,5 H36 V43 H12 Z M12,11 H36 V13 H12 Z M12,35 H36 V37 H12 Z M18,19 H30 V21 H18 Z M18,24 H30 V26 H18 Z M18,29 H26 V31 H18 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M12,5 H36 V11 H12 Z" />
+</vector>

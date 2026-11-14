@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flacon (sirop, solution buvable) : le liquide est la partie pleine -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:pathData="M17,5 H31 V10 H17 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M19,10 H29 V14 L34,18 V39 A4,4 0 0 1 30,43 H18 A4,4 0 0 1 14,39 V18 L19,14 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M14,27 H34 V39 A4,4 0 0 1 30,43 H18 A4,4 0 0 1 14,39 Z" />
+</vector>

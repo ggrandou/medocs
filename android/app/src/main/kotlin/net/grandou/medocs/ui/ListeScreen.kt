@@ -156,7 +156,7 @@ private fun CarteMedicament(l: LigneMedicament, onClick: () -> Unit) {
     else CardDefaults.cardColors()
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick), colors = couleurs) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          Vignette(m.photoPath, 72.dp) // décorative : le nom est lu à côté
+          VisuelMedicament(m, 72.dp) // photo ou icône du type ; décoratif : le nom est lu à côté
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(m.nom, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             m.substances?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

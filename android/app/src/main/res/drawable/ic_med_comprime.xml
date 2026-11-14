@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Comprimé rond sécable, avec un second comprimé derrière ; la teinte vient de l'icône Compose -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M36,22 A8,8 0 1 1 35.99,22 Z" />
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="M20,12 A12,12 0 1 1 19.99,12 Z M10,23 H30 V25.2 H10 Z" />
+</vector>

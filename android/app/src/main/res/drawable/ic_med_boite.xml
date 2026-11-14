@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Boîte de médicament à croix : forme inconnue ou autre -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="M7,13 H41 V39 A2,2 0 0 1 39,41 H9 A2,2 0 0 1 7,39 Z M22,19 H26 V24 H31 V28 H26 V33 H22 V28 H17 V24 H22 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M9,7 H39 A2,2 0 0 1 41,9 V11.5 H7 V9 A2,2 0 0 1 9,7 Z" />
+</vector>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gouttes (collyre, solution en gouttes) : grande goutte et petite goutte -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:pathData="M21,6 C21,6 9,20 9,29 A12,12 0 0 0 33,29 C33,20 21,6 21,6 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M37,22 C37,22 31.5,28.5 31.5,32.5 A5.5,5.5 0 0 0 42.5,32.5 C42.5,28.5 37,22 37,22 Z" />
+</vector>
