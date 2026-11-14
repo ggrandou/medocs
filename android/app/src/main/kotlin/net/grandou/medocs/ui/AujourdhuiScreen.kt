@@ -124,7 +124,7 @@ fun AujourdhuiScreen(
                                 Text(p.medicament.nom, style = MaterialTheme.typography.titleSmall)
                                 Text("${formaterAvecUnite(p.prise.quantite, p.medicament.unite)} à ${heureDe(p.prise.horodatage)}", style = MaterialTheme.typography.bodyMedium)
                             }
-                            TextButton(onClick = { onAnnuler(p.prise) }) { Text("Annuler") }
+                            BoutonAction("Annuler", R.drawable.ic_action_annuler, "Annuler : ${p.medicament.nom}") { onAnnuler(p.prise) }
                         }
                     }
                 }
@@ -167,7 +167,6 @@ private fun CarteOccurrence(
     val sombre = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val couleurs = when (l.etat) {
         EtatOccurrence.A_VENIR -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-        EtatOccurrence.MANQUEE -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         else -> {
             val (fond, texte) = couleursStatut(l.etat, sombre)
             CardDefaults.cardColors(containerColor = fond, contentColor = texte)
@@ -218,7 +217,7 @@ private fun CarteOccurrence(
                     BoutonAction("Sauter", R.drawable.ic_action_sauter, "Sauter : $quoi") { onSauter(l) }
                 }
             } else {
-                l.prise?.let { TextButton(onClick = { onAnnuler(it) }, Modifier.semantics { contentDescription = "Annuler : ${l.medicament.nom}, ${o.heure}" }) { Text("Annuler") } }
+                l.prise?.let { BoutonAction("Annuler", R.drawable.ic_action_annuler, "Annuler : ${l.medicament.nom}, ${o.heure}") { onAnnuler(it) } }
             }
         }
     }
@@ -304,10 +303,10 @@ private fun BoutonAction(libelle: String, icone: Int, description: String, onCli
     }
 }
 
-/** Couleur de fond et de texte d'un statut (contrastes > 7:1). Hors palette de l'icône : vert = fait, jaune = reporté, orange = en retard, rouge = sautée ; gris = manquée. */
+/** Couleur de fond et de texte d'un statut (contrastes > 7:1). Hors palette de l'icône : vert = fait, jaune = reporté, orange = en retard, rouge = sautée ou manquée. */
 private fun couleursStatut(etat: EtatOccurrence, sombre: Boolean): Pair<Color, Color> = when (etat) {
     EtatOccurrence.PRISE -> if (sombre) Color(0xFF1E4D2B) to Color(0xFFCDEBD3) else Color(0xFFCDEBD3) to Color(0xFF00210C)
     EtatOccurrence.REPORTEE -> if (sombre) Color(0xFF665200) to Color(0xFFFFF3A0) else Color(0xFFFFF3A0) to Color(0xFF221B00)
     EtatOccurrence.EN_RETARD -> if (sombre) Color(0xFF8A4A00) to Color(0xFFFFE0C2) else Color(0xFFFFCF99) to Color(0xFF2E1500)
-    else -> if (sombre) Color(0xFF93000A) to Color(0xFFFFDAD6) else Color(0xFFFFB8B0) to Color(0xFF410002) // SAUTEE
+    else -> if (sombre) Color(0xFF93000A) to Color(0xFFFFDAD6) else Color(0xFFFFB8B0) to Color(0xFF410002) // SAUTEE ou MANQUEE
 }
