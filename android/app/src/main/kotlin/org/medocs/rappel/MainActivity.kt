@@ -30,6 +30,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import org.medocs.rappel.ui.ImportDialog
 import org.medocs.rappel.ui.MessageDialog
 import org.medocs.rappel.ui.SauvegardeDialog
+import androidx.compose.runtime.remember
+import org.medocs.rappel.ui.AvertissementDialog
+import org.medocs.rappel.ui.VERSION_AVERTISSEMENT
 import org.medocs.rappel.ui.AideRappelsDialog
 import org.medocs.rappel.ui.AlerteAutorisation
 import org.medocs.rappel.ui.AppTheme
@@ -48,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private var notifications by mutableStateOf(true)
     private var batterieOptimisee by mutableStateOf(false)
     private var aideIgnoree by mutableStateOf(false)
+    private var avertissementAccepte by mutableStateOf(true) // vrai par défaut pour éviter un clignotement avant la lecture des préférences
     // Sauvegarde : le mot de passe saisi attend le retour du sélecteur de fichier ; il n'est jamais enregistré
     private var motDePasseExport: CharArray? = null
     private var fichierAImporter by mutableStateOf<android.net.Uri?>(null)
@@ -67,6 +71,7 @@ class MainActivity : ComponentActivity() {
         notifications = Notifications.autorisees(this)
         batterieOptimisee = !getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
         aideIgnoree = prefsUi.getBoolean("aide_rappels_ignoree", false)
+        avertissementAccepte = prefsUi.getInt("avertissement_version", 0) >= VERSION_AVERTISSEMENT
         vm.rafraichirRappels()
     }
 
@@ -85,6 +90,16 @@ class MainActivity : ComponentActivity() {
                 var historiqueDe by rememberSaveable { mutableLongStateOf(0L) }
                 var aide by rememberSaveable { mutableStateOf(false) }
                 var sauvegarde by rememberSaveable { mutableStateOf(false) }
+                var aPropos by rememberSaveable { mutableStateOf(false) }
+                val versionApp = remember { packageManager.getPackageInfo(packageName, 0).versionName ?: "" }
+                if (!avertissementAccepte) {
+                    AvertissementDialog(premiereFois = true, versionApp = versionApp) {
+                        prefsUi.edit().putInt("avertissement_version", VERSION_AVERTISSEMENT).apply()
+                        avertissementAccepte = true
+                    }
+                } else if (aPropos) {
+                    AvertissementDialog(premiereFois = false, versionApp = versionApp) { aPropos = false }
+                }
                 val messageSauvegarde by vm.messageSauvegarde.collectAsStateWithLifecycle()
                 if (sauvegarde) SauvegardeDialog(
                     onFermer = { sauvegarde = false },
@@ -155,6 +170,7 @@ class MainActivity : ComponentActivity() {
                                     onProtoAlarmes = { startActivity(Intent(this@MainActivity, ProtoAlarmesActivity::class.java)) },
                                     onAideRappels = { aide = true },
                                     onSauvegarde = { sauvegarde = true },
+                                    onAPropos = { aPropos = true },
                                     onPlanning = { planningDe = it.medicament.id },
                                     onModifier = { modificationDe = it.medicament.id },
                                     onHistorique = { historiqueDe = it.medicament.id },
