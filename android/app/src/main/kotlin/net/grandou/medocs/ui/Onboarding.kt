@@ -148,37 +148,37 @@ private fun Point(titre: String, texte: String) {
 
 @Composable
 private fun PagePresentation() {
+    IllustrationPage(Dessin.PILULE)
     Titre("Bienvenue dans Mes Médocs")
     Text("Ton aide-mémoire pour ne plus oublier tes médicaments.", style = MaterialTheme.typography.titleMedium)
-    Point("Des rappels à l'heure", "Une notification à chaque prise, avec trois boutons : « J'ai pris », Reporter ou Sauter.")
-    Point("Un stock toujours à jour", "Chaque prise décompte ton stock, et l'application te prévient avant la rupture.")
-    Point("100 % privé", "Aucun compte, aucun cloud, aucun accès à internet : tes données restent sur ce téléphone.")
-    Point("Gratuit et libre", "Sans publicité, code source ouvert (licence GPL).")
+    Point("Des rappels à l'heure", "Une notification à chaque prise.")
+    Point("Un stock à jour", "Tu es prévenu avant la rupture.")
+    Point("100 % privé", "Pas de compte, pas d'internet : tout reste sur ce téléphone.")
 }
 
 @Composable
 private fun PagePremiersPas() {
+    IllustrationPage(Dessin.BOITE)
     Titre("Premiers pas")
-    Point("1. Ajoute un médicament", "Scanne le code-barres (ou le petit carré) de la boîte, ou cherche-le par son nom. Le conditionnement est repris automatiquement.")
-    Point("2. Crée son planning", "Touche le médicament, puis « Planning des prises » : heures, doses, jours de la semaine, durée du traitement.")
-    Point("3. Réponds aux rappels", "À l'heure dite, touche « J'ai pris », Reporter ou Sauter, dans la notification ou dans l'onglet Aujourd'hui.")
-    Point("4. Suis ton stock", "L'onglet Médicaments montre le stock restant et le nombre de jours qu'il couvre.")
+    Point("1. Ajoute un médicament", "Scanne sa boîte ou cherche son nom.")
+    Point("2. Crée son planning", "Heures, doses, jours.")
+    Point("3. Réponds au rappel", "« J'ai pris », Reporter ou Sauter.")
 }
 
 @Composable
 private fun PageConseils() {
+    IllustrationPage(Dessin.CONSEIL)
     Titre("Quelques conseils")
-    Point("Compte tes comprimés au départ", "Renseigne le stock réel : toutes les alertes en dépendent. Corrige-le quand tu rachètes une boîte (« Ajouter une boîte »).")
-    Point("Une prise hors planning ?", "Douleur, fièvre… enregistre-la avec « Prise hors planning », dans l'onglet Aujourd'hui, pour garder le stock juste.")
-    Point("Un traitement terminé ?", "Archive-le : les rappels s'arrêtent, l'historique reste.")
-    Point("Fais une sauvegarde", "Dans « Plus », puis « Sauvegarde », exporte de temps en temps un fichier chiffré : c'est le seul moyen de garder tes données si tu changes de téléphone.")
-    Point("Une photo de la boîte", "Elle t'aide à reconnaître chaque médicament d'un coup d'œil.")
+    Point("Compte ton stock au départ", "Les alertes en dépendent.")
+    Point("Une prise hors planning ?", "Note-la dans l'onglet Aujourd'hui.")
+    Point("Fais une sauvegarde", "Menu Plus : c'est le seul moyen de garder tes données si tu changes de téléphone.")
 }
 
 @Composable
 private fun PageAvertissement(accepte: Boolean, versionApp: String) {
+    IllustrationPage(Dessin.BOUCLIER)
     Titre("Avant d'aller plus loin")
-    TexteAvertissement(versionApp)
+    TexteAvertissement(versionApp, resume = true)
     Text(
         if (accepte) "Tu as déjà accepté cet avertissement." else "Pour continuer, touche « J'ai compris et j'accepte ».",
         Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
@@ -188,19 +188,18 @@ private fun PageAvertissement(accepte: Boolean, versionApp: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PageReglages(r: ReglagesRappels, onNotifications: () -> Unit, onAlarmesExactes: () -> Unit, onBatterie: () -> Unit) {
+    IllustrationPage(Dessin.CLOCHE)
     Titre("Pour que les rappels sonnent à l'heure")
-    Text("Trois réglages du téléphone décident de la fiabilité des rappels. Leur état se met à jour dès ton retour ici.", style = MaterialTheme.typography.bodyLarge)
-    Reglage("Notifications", r.notifications, "Sans elles, aucun rappel ne s'affiche.", "Autoriser les notifications", onNotifications)
+    Reglage("Notifications", r.notifications, "Sans elles, aucun rappel.", "Autoriser les notifications", onNotifications)
     if (r.alarmesExactesAFaire) {
-        Reglage("Alarmes exactes", r.alarmesExactes, "Pour sonner à la minute près, même téléphone en veille.", "Autoriser les alarmes exactes", onAlarmesExactes)
+        Reglage("Alarmes exactes", r.alarmesExactes, "Pour sonner à la minute près.", "Autoriser les alarmes exactes", onAlarmesExactes)
     }
     Reglage(
         "Économie d'énergie", !r.batterieOptimisee,
-        "Certains téléphones (Samsung surtout) endorment les applications peu utilisées et retardent leurs rappels.",
+        "Certains téléphones retardent les rappels.",
         "Voir comment l'éviter", onBatterie,
     )
-    Point("Caméra", "Elle n'est demandée qu'au moment où tu scannes une boîte ou prends une photo. Rien n'est enregistré ni envoyé.")
-    Text("Tu pourras tout modifier plus tard dans les réglages du téléphone, et revoir cette présentation depuis « Plus ».", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium)
+    Text("Revois cette présentation à tout moment depuis « Plus ».", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium)
 }
 
 /** Une ligne de réglage : l'état est dit en toutes lettres (jamais par la seule couleur). */

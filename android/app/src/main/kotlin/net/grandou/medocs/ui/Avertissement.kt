@@ -38,7 +38,19 @@ fun AvertissementDialog(premiereFois: Boolean, versionApp: String, onFermer: () 
 
 /** Texte de l'avertissement, partagé par la boîte « À propos » et la page du carrousel de prise en main. */
 @Composable
-fun TexteAvertissement(versionApp: String) {
+fun TexteAvertissement(versionApp: String, resume: Boolean = false) {
+    if (resume) { // version courte du carrousel ; le texte complet reste dans « Plus » > « À propos »
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Un simple aide-mémoire", fontWeight = FontWeight.SemiBold)
+            Text("Aucun conseil médical : l'application ne vérifie ni doses, ni interactions, et ne remplace ni ton médecin ni ton pharmacien.", style = MaterialTheme.typography.bodyMedium)
+            Text("Vérifie toujours", fontWeight = FontWeight.SemiBold)
+            Text("Ce que tu saisis est de ta responsabilité : contrôle-le sur ta boîte et ton ordonnance.", style = MaterialTheme.typography.bodyMedium)
+            Text("Un rappel peut échouer", fontWeight = FontWeight.SemiBold)
+            Text("Pour un traitement dont un oubli serait grave, ne te fie pas qu'à cette application.", style = MaterialTheme.typography.bodyMedium)
+            Text("Texte complet : menu Plus, « À propos ».", style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Un simple aide-mémoire", fontWeight = FontWeight.SemiBold)
                 Text(
