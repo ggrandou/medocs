@@ -19,6 +19,10 @@ fun ComposeTestRule.problemesDAccessibilite(densite: Density): List<String> {
     onAllNodes(hasClickAction()).fetchSemanticsNodes().forEach { n ->
         val b = n.touchBoundsInRoot
         if (b.width <= 0f || b.height <= 0f) return@forEach // pas affiché (hors de l'écran)
+        // Élément coupé par la zone de défilement ou la barre d'onglets : sa zone visible est tronquée, on ne peut pas
+        // juger sa taille ici (il sera contrôlé entièrement visible, une fois défilé). La zone tactile minimale de Material
+        // dépasse la taille de la mise en page : elle n'est jamais plus petite que celle-ci quand l'élément est entier.
+        if (b.height < n.size.height - 1f || b.width < n.size.width - 1f) return@forEach
         val l = b.width / densite.density
         val h = b.height / densite.density
         val libelle = (prop(n, SemanticsProperties.Text)?.joinToString { it.text }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème de la fenêtre : il suit le mode clair/sombre de l'appareil (qualifieur -night) et colore les boîtes
+         de dialogue du système (sélecteurs d'heure et de date) ainsi que le fond avant le premier dessin de Compose. -->
+    <style name="Theme.MesMedocs" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fond_fenetre</item>
+    </style>
+</resources>

@@ -40,6 +40,7 @@ import net.grandou.medocs.ui.ReglagesRappels
 import net.grandou.medocs.ui.VERSION_ONBOARDING
 import net.grandou.medocs.ui.AlerteAutorisation
 import net.grandou.medocs.ui.AppTheme
+import net.grandou.medocs.ui.BarreNavigation
 import net.grandou.medocs.ui.AppViewModel
 import net.grandou.medocs.ui.AujourdhuiScreen
 import net.grandou.medocs.ui.HistoriqueScreen
@@ -169,12 +170,7 @@ class MainActivity : ComponentActivity() {
                     medicamentHisto != null -> HistoriqueScreen(vm, medicamentHisto, onRetour = { historiqueDe = 0L })
                     ajout -> AjoutScreen(vm, onTermine = { ajout = false })
                     medicamentPlanning != null -> PlanningScreen(vm, medicamentPlanning, onRetour = { planningDe = 0L })
-                    else -> Scaffold(bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(onglet == 0, { onglet = 0 }, icon = { Text("📅", Modifier.clearAndSetSemantics {}) }, label = { Text("Aujourd'hui") })
-                            NavigationBarItem(onglet == 1, { onglet = 1 }, icon = { Text("💊", Modifier.clearAndSetSemantics {}) }, label = { Text("Médicaments") })
-                        }
-                    }) { padding ->
+                    else -> Scaffold(bottomBar = { BarreNavigation(onglet) { onglet = it } }) { padding ->
                         Box(Modifier.padding(bottom = padding.calculateBottomPadding())) {
                             if (onglet == 0) {
                                 AujourdhuiScreen(

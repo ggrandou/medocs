@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="icone_fond">#1F6F8B</color>
+    <!-- Même valeur que le fond de la palette (ui/Palette.kt) : pas de flash blanc au lancement en mode sombre -->
+    <color name="fond_fenetre">#FBFCFF</color>
 </resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gélule inclinée, version pleine (onglet actif) : deux moitiés séparées par un filet -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:rotation="-45" android:pivotX="12" android:pivotY="12">
+        <path android:fillColor="#FFFFFF" android:pathData="M11.3,8 H7 A4,4 0 0 0 7,16 H11.3 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M12.7,8 H17 A4,4 0 0 1 17,16 H12.7 Z" />
+    </group>
+</vector>
