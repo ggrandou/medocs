@@ -6,7 +6,7 @@ Application Android de **rappel de prise de médicaments**, gratuite, sans publi
 
 ## Fonctions
 
-- Rappels à l'heure de la prise (notification avec « Pris », « Reporter » et « Sauter »), y compris téléphone en veille ou redémarré
+- Rappels à l'heure de la prise (notification avec « J'ai pris », « Reporter » et « Sauter »), y compris téléphone en veille ou redémarré
 - Plannings souples : tous les jours, certains jours de la semaine, tous les N jours, plusieurs heures et doses par jour
 - Gestion du stock, alerte quand il est faible (en jours de traitement restants) et prises hors planning
 - Recherche d'un médicament par nom, molécule ou numéro, dans la base publique française, ou saisie manuelle

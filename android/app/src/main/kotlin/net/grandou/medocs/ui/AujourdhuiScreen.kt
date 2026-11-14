@@ -15,6 +15,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import net.grandou.medocs.R
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -180,15 +187,28 @@ private fun CarteOccurrence(
                 EtatOccurrence.SAUTEE -> "Sautée"
                 EtatOccurrence.MANQUEE -> "Manquée"
             }
-            statut?.let { Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
+            // L'état résultant (pris, sauté, reporté) a son propre signe : une icône dans la couleur principale, jamais un bouton plein
+            val iconeStatut = when (l.etat) {
+                EtatOccurrence.PRISE -> R.drawable.ic_action_pris
+                EtatOccurrence.SAUTEE -> R.drawable.ic_action_sauter
+                EtatOccurrence.REPORTEE -> R.drawable.ic_action_reporter
+                else -> null
+            }
+            statut?.let {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    iconeStatut?.let { id -> Icon(painterResource(id), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                    Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
           }
             if (l.etat.enAttente) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Libellés complets : « Pris » seul ne dit pas de quelle prise il s'agit quand TalkBack parcourt les boutons
+                FlowRow(maxItemsInEachRow = 3, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Trois actions de MÊME style : un bouton plein « Pris » se lisait comme un état déjà validé.
+                    // Libellés complets pour TalkBack : « J'ai pris » seul ne dit pas de quelle prise il s'agit.
                     val quoi = "${l.medicament.nom}, ${o.heure}"
-                    Button(onClick = { onPrendre(l) }, Modifier.semantics { contentDescription = "Pris : $quoi" }) { Text("Pris") }
-                    OutlinedButton(onClick = onReporter, Modifier.semantics { contentDescription = "Reporter : $quoi" }) { Text("Reporter") }
-                    OutlinedButton(onClick = { onSauter(l) }, Modifier.semantics { contentDescription = "Sauter : $quoi" }) { Text("Sauter") }
+                    BoutonAction("J'ai pris", R.drawable.ic_action_pris, "J'ai pris : $quoi", Modifier.weight(1f)) { onPrendre(l) }
+                    BoutonAction("Reporter", R.drawable.ic_action_reporter, "Reporter : $quoi", Modifier.weight(1f)) { onReporter() }
+                    BoutonAction("Sauter", R.drawable.ic_action_sauter, "Sauter : $quoi", Modifier.weight(1f)) { onSauter(l) }
                 }
             } else {
                 l.prise?.let { TextButton(onClick = { onAnnuler(it) }, Modifier.semantics { contentDescription = "Annuler : ${l.medicament.nom}, ${o.heure}" }) { Text("Annuler") } }
@@ -259,5 +279,18 @@ private fun BandeauManquees(manquees: List<PonctuelleAujourdhui>) {
             }
             Text("Détail et corrections : onglet Médicaments > Historique.", style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+/** Bouton d'action d'une prise : icône + verbe, tonal, identique pour les trois actions. */
+@Composable
+private fun BoutonAction(libelle: String, icone: Int, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick, modifier.semantics { contentDescription = description },
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+    ) {
+        Icon(painterResource(icone), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text(libelle)
     }
 }

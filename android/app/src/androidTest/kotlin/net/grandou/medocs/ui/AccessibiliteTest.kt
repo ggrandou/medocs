@@ -143,7 +143,7 @@ class AccessibiliteTest {
 
     @Test fun lesBoutonsDUnePriseDisentDeQuellePriseIlSAgit() {
         rule.setContent { net.grandou.medocs.ui.AppTheme { aujourdhuiScreen() } }
-        for (action in listOf("Pris", "Reporter", "Sauter")) {
+        for (action in listOf("J'ai pris", "Reporter", "Sauter")) {
             rule.onNodeWithContentDescription("$action : DOLIPRANE 1000 mg, comprimé, 12:00").assertHasClickAction()
         }
         rule.onNodeWithContentDescription("Annuler : PANTOPRAZOLE SANDOZ 40 mg, comprimé gastro-résistant, 08:00").assertHasClickAction()

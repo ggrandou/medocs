@@ -16,7 +16,7 @@ Dépôt vide au démarrage (aucun code, aucune commande de build/test définie).
 Application Android de **rappel de prise de médicaments**, d'abord personnelle, puis diffusée publiquement : gratuite, sans publicité, open source, **licence GPLv3 ou ultérieure** (fichier `LICENSE`, texte officiel de la FSF). Interface et documentation en français.
 
 Périmètre volontairement restreint :
-- rappel à l'heure de la prise (actions « Pris / Reporter / Sauter » dans la notification) ;
+- rappel à l'heure de la prise (actions « J'ai pris / Reporter / Sauter » dans la notification) ;
 - gestion du stock et alerte de stock faible ;
 - prises ponctuelles hors planning régulier.
 
@@ -71,7 +71,7 @@ Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (
 - Une occurrence sans réponse **2 h** après son heure passe en « manquée » (`DELAI_MANQUE_MIN`) ; « Reporter » = 30 min (`REPORT_MIN`).
 - Alarme exacte (`setExactAndAllowWhileIdle`) si l'utilisateur a accordé `SCHEDULE_EXACT_ALARM` (refusée par défaut depuis Android 14 et **remise à zéro à chaque réinstallation**) ; sinon repli sur `setAndAllowWhileIdle`, INEXACT (retards possibles). Piège vérifié : `setAlarmClock` exige aussi cette autorisation (SecurityException sinon) — ce n'est PAS un repli sans permission. Un bandeau de l'écran « Aujourd'hui » propose l'autorisation. `USE_EXACT_ALARM` (accordée d'office) serait possible pour une build F-Droid, mais la politique du Play Store la réserve aux apps de réveil/agenda.
 - Alerte de stock faible : une notification par médicament et par jour (pref `alertes`), évaluée à chaque exécution du moteur.
-- Les boutons de la notification (Pris / Reporter / Sauter) passent par `ActionReceiver`, qui appelle le même `Repository` que l'UI.
+- Les boutons de la notification (« J'ai pris » / Reporter / Sauter) passent par `ActionReceiver`, qui appelle le même `Repository` que l'UI.
 
 ## Sauvegarde et aide à la fiabilité
 
@@ -91,7 +91,7 @@ Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (
 ## Accessibilité
 
 - **Grandes polices** : tout doit rester utilisable à 200 % (testé sur le S8 avec `settings put system font_scale 2.0`, à remettre à 1.0 après). Règle : jamais de `Row` avec plusieurs boutons ou textes côte à côte, utiliser `FlowRow` (une `Row` comprime le dernier élément jusqu'à le faire retourner à la ligne lettre par lettre : bug réel trouvé sur le bandeau d'économie d'énergie) ; les champs de formulaire en pleine largeur, jamais `weight` dans une rangée de boutons.
-- **TalkBack** : cartes regroupées en une phrase (`semantics(mergeDescendants = true)`) pour l'info, boutons gardés séparés et décrits en entier (« Pris : <médicament>, <heure> »), titres en `heading()`, interrupteurs en `toggleable(role = Role.Switch)` sur toute la ligne, images décoratives sans description (le nom est lu à côté), icônes emoji de la barre de navigation en `clearAndSetSemantics {}`, erreurs en `liveRegion`. Ordre de l'écran « Aujourd'hui » : bandeau **critique** (notifications coupées), manquées, prises du jour, puis astuces.
+- **TalkBack** : cartes regroupées en une phrase (`semantics(mergeDescendants = true)`) pour l'info, boutons gardés séparés et décrits en entier (« J'ai pris : <médicament>, <heure> »), titres en `heading()`, interrupteurs en `toggleable(role = Role.Switch)` sur toute la ligne, images décoratives sans description (le nom est lu à côté), icônes emoji de la barre de navigation en `clearAndSetSemantics {}`, erreurs en `liveRegion`. Ordre de l'écran « Aujourd'hui » : bandeau **critique** (notifications coupées), manquées, prises du jour, puis astuces.
 - **Tests** (`androidTest/.../ui/AccessibiliteTest.kt`) : rendent les écrans à 100 % et 200 %, vérifient zones tactiles ≥ 48 dp et libellés sur l'arbre sémantique, et écrivent des captures dans le dossier externe de l'app (relecture visuelle). Un **test témoin** (composant volontairement fautif) DOIT échouer, sinon les autres ne prouvent rien. Piège vérifié : `enableAccessibilityChecks`/`tryPerformAccessibilityChecks` de Compose et le validateur ATF sur la fenêtre **ne détectaient rien** (composant de 16 dp sans libellé accepté) : ne pas s'y fier. Lancer avec `am instrument` (pas `connectedAndroidTest`, qui désinstalle l'app et emporte les captures) ; l'écran du S8 doit être allumé, sinon « No compose hierarchies found ».
 
 ## Scan du code-barres des boîtes
@@ -130,3 +130,7 @@ Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (
 - `ui/VisuelMedicament.kt` : sa photo si elle existe, sinon une **tuile à l'icône de son type** (comprimé, gélule, liquide, gouttes, injection, sachet, tube, suppositoire, spray, boîte générique). La tuile est TOUJOURS dessinée et la photo la recouvre une fois chargée : la mise en page ne bouge jamais (avant, l'espace était vide sans photo). Décorative : le nom est lu à côté.
 - `domain/TypeMedicament.kt` choisit le type d'après la **forme** de la base (« comprimé pelliculé », « solution buvable en gouttes »…), puis l'**unité de prise**, puis le **nom** (saisie manuelle). Règles ORDONNÉES : une poudre injectable est une injection avant d'être un sachet ; « gélule » contient « gel » (d'où `\bgel\b`). Couvre plus de 98 % de la base (207 spécialités sur 11 897 restent « boîte générique » : dispositifs, vernis, trousses radiopharmaceutiques…). Pour ajouter un type : un drawable `ic_med_*.xml` (48 dp, blanc, `fillAlpha` pour les parties secondaires), une valeur de l'enum, une règle, une couleur dans `couleursDe`.
 - Les couleurs viennent des paires `*Container` / `on*Container` du thème (contrastes vérifiés par `PaletteTest`), donc lisibles en clair et en sombre. `IconesMedicamentsTest` dessine la planche des dix icônes dans les deux modes.
+
+## Boutons d'action d'une prise
+
+- Les trois actions (« J'ai pris », Reporter, Sauter) ont le **même style** (tonal, icône + verbe). Ne jamais mettre un bouton plein sur « Pris » : c'est un participe, donc un bouton plein se lit comme un ÉTAT déjà validé. L'état résultant (pris, sauté, reporté) s'affiche à part : icône dans la couleur principale + texte (« Pris à 16:02 »), carte grisée.

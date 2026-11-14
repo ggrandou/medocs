@@ -150,7 +150,7 @@ private fun Point(titre: String, texte: String) {
 private fun PagePresentation() {
     Titre("Bienvenue dans Mes Médocs")
     Text("Ton aide-mémoire pour ne plus oublier tes médicaments.", style = MaterialTheme.typography.titleMedium)
-    Point("Des rappels à l'heure", "Une notification à chaque prise, avec trois boutons : Pris, Reporter ou Sauter.")
+    Point("Des rappels à l'heure", "Une notification à chaque prise, avec trois boutons : « J'ai pris », Reporter ou Sauter.")
     Point("Un stock toujours à jour", "Chaque prise décompte ton stock, et l'application te prévient avant la rupture.")
     Point("100 % privé", "Aucun compte, aucun cloud, aucun accès à internet : tes données restent sur ce téléphone.")
     Point("Gratuit et libre", "Sans publicité, code source ouvert (licence GPL).")
@@ -161,7 +161,7 @@ private fun PagePremiersPas() {
     Titre("Premiers pas")
     Point("1. Ajoute un médicament", "Scanne le code-barres (ou le petit carré) de la boîte, ou cherche-le par son nom. Le conditionnement est repris automatiquement.")
     Point("2. Crée son planning", "Touche le médicament, puis « Planning des prises » : heures, doses, jours de la semaine, durée du traitement.")
-    Point("3. Réponds aux rappels", "À l'heure dite, touche Pris, Reporter ou Sauter, dans la notification ou dans l'onglet Aujourd'hui.")
+    Point("3. Réponds aux rappels", "À l'heure dite, touche « J'ai pris », Reporter ou Sauter, dans la notification ou dans l'onglet Aujourd'hui.")
     Point("4. Suis ton stock", "L'onglet Médicaments montre le stock restant et le nombre de jours qu'il couvre.")
 }
 

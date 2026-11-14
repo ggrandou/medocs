@@ -25,7 +25,7 @@ class MoteurReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) = asynchrone { Moteur.executer(context) }
 }
 
-/** Boutons Pris / Reporter / Sauter de la notification. */
+/** Boutons « J'ai pris » / Reporter / Sauter de la notification. */
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) = asynchrone {
         val med = intent.getLongExtra(EXTRA_MED, -1)

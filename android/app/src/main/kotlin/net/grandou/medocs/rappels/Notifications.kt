@@ -67,7 +67,7 @@ object Notifications {
             .setCategory(Notification.CATEGORY_REMINDER)
             .setContentIntent(ouvrirApp(c))
             .setOngoing(false)
-            .addAction(action(c, o, m, Notifications.ACTION_PRENDRE, 0, "Pris"))
+            .addAction(action(c, o, m, Notifications.ACTION_PRENDRE, 0, "J'ai pris"))
             .addAction(action(c, o, m, Notifications.ACTION_REPORTER, 1, "Reporter ${Moteur.REPORT_MIN} min"))
             .addAction(action(c, o, m, Notifications.ACTION_SAUTER, 2, "Sauter"))
             .build()

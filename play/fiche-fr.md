@@ -12,7 +12,7 @@ Textes prêts à coller dans la Play Console. Les champs `<à compléter>` dépe
 Mes Médocs est un aide-mémoire pour ne plus oublier tes médicaments : il te prévient à l'heure de chaque prise et suit ton stock. Gratuit, sans publicité, et 100 % privé.
 
 RAPPELS FIABLES
-• Une notification à l'heure de chaque prise, avec trois boutons : Pris, Reporter ou Sauter
+• Une notification à l'heure de chaque prise, avec trois boutons : « J'ai pris », Reporter ou Sauter
 • Les rappels restent actifs téléphone en veille, après un redémarrage ou un changement d'heure
 • Plannings souples : tous les jours, certains jours de la semaine, tous les N jours, plusieurs heures et doses par jour (demi-comprimés compris)
 • Les prises oubliées sont signalées
