@@ -136,3 +136,4 @@ Tables : `medicament`, `planning` (règle de récurrence) → `planning_heure` (
 ## Boutons d'action d'une prise
 
 - Les trois actions (« J'ai pris », Reporter, Sauter) ont le **même style** (tonal, icône + verbe). Ne jamais mettre un bouton plein sur « Pris » : c'est un participe, donc un bouton plein se lit comme un ÉTAT déjà validé. L'état résultant (pris, sauté, reporté) s'affiche à part : icône dans la couleur principale + texte (« Pris à 16:02 »), carte grisée.
+- **Couleur par statut** (`CarteOccurrence`) : pris = `primaryContainer`, en retard = `errorContainer`, reporté = `tertiaryContainer`, à venir = `surfaceContainerLow`, sauté/manqué = `surfaceVariant`. Toujours doublée du texte du statut (jamais la couleur seule). Les tuiles d'icône ont un liseré, sinon elles disparaissent sur une carte de même teinte.

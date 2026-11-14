@@ -1,6 +1,7 @@
 package net.grandou.medocs.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -50,7 +51,8 @@ private fun couleursDe(t: TypeMedicament): Pair<Color, Color> {
 @Composable
 fun TuileTypeMedicament(type: TypeMedicament, cote: Dp, modifier: Modifier = Modifier) {
     val (fond, trait) = couleursDe(type)
-    Box(modifier.size(cote).clip(RoundedCornerShape(8.dp)).background(fond)) {
+    // Liseré : la tuile reste visible sur une carte colorée par statut, qui peut avoir la même teinte
+    Box(modifier.size(cote).clip(RoundedCornerShape(8.dp)).background(fond).border(1.dp, trait.copy(alpha = 0.4f), RoundedCornerShape(8.dp))) {
         Icon(painterResource(dessin(type)), contentDescription = null, tint = trait, modifier = Modifier.fillMaxSize().padding(cote * 0.14f))
     }
 }

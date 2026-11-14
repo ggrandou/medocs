@@ -161,12 +161,14 @@ private fun CarteOccurrence(
     onAnnuler: (Prise) -> Unit,
 ) {
     val o = l.occurrence
-    val couleurs = when (l.etat) {
-        EtatOccurrence.EN_RETARD -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        EtatOccurrence.PRISE -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        EtatOccurrence.SAUTEE, EtatOccurrence.MANQUEE -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        else -> CardDefaults.cardColors()
-    }
+    // Une couleur par statut (rôles du thème : contrastes vérifiés, clair et sombre). Le texte du statut reste écrit : la couleur n'est jamais seule.
+    val couleurs = CardDefaults.cardColors(containerColor = when (l.etat) {
+        EtatOccurrence.EN_RETARD -> MaterialTheme.colorScheme.errorContainer
+        EtatOccurrence.REPORTEE -> MaterialTheme.colorScheme.tertiaryContainer
+        EtatOccurrence.PRISE -> MaterialTheme.colorScheme.primaryContainer
+        EtatOccurrence.SAUTEE, EtatOccurrence.MANQUEE -> MaterialTheme.colorScheme.surfaceVariant
+        EtatOccurrence.A_VENIR -> MaterialTheme.colorScheme.surfaceContainerLow
+    })
     Card(Modifier.fillMaxWidth(), colors = couleurs) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           // Heure, nom, dose et état forment UNE phrase pour TalkBack ; les boutons restent des éléments à part
@@ -196,7 +198,7 @@ private fun CarteOccurrence(
             }
             statut?.let {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    iconeStatut?.let { id -> Icon(painterResource(id), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                    iconeStatut?.let { id -> Icon(painterResource(id), contentDescription = null, modifier = Modifier.size(20.dp)) }
                     Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 }
             }
