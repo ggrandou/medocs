@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "org.medocs.rappel"
+    namespace = "net.grandou.medocs"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "org.medocs.rappel"
+        applicationId = "net.grandou.medocs"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1-proto"
+        versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

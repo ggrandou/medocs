@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Dépôt vide au démarrage (aucun code, aucune commande de build/test définie). Ce fichier consigne les décisions de conception déjà prises ; à compléter avec les vraies commandes dès que le code existe.
 
+## Identité de l'application
+
+- Nom affiché : **Mes Médocs** (`@string/app_name`). Identifiant du paquet : **`net.grandou.medocs`** (organisation grandou.net) : ne plus le changer une fois publié, Android le traiterait comme une autre application (données non transférées, hors sauvegarde chiffrée). Le prototype initial utilisait `org.medocs.rappel` : un appareil de test peut encore l'avoir installé en parallèle (rappels en double), le désinstaller.
+- Icône adaptative (pilule bicolore sur fond `#1F6F8B`, avec variante monochrome) dans `res/mipmap-anydpi-v26/` et `res/drawable/ic_launcher_*.xml` ; icône de notification `ic_notification.xml`.
+
 ## Objectif
 
 Application Android de **rappel de prise de médicaments**, d'abord personnelle, puis diffusée publiquement : gratuite, sans publicité, open source (GPLv3 ou AGPLv3 envisagée). Interface et documentation en français.
