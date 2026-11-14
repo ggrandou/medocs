@@ -1,6 +1,10 @@
 package org.medocs.rappel
 
+import android.Manifest
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.medocs.rappel.ui.AjoutScreen
+import org.medocs.rappel.rappels.Moteur
+import org.medocs.rappel.rappels.Notifications
+import org.medocs.rappel.ui.AlerteAutorisation
 import org.medocs.rappel.ui.AppTheme
 import org.medocs.rappel.ui.AppViewModel
 import org.medocs.rappel.ui.AujourdhuiScreen
@@ -29,9 +36,23 @@ import org.medocs.rappel.ui.PlanningScreen
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
 
+    // Rafraîchis à chaque retour dans l'app (l'utilisateur revient des réglages système)
+    private var alarmesExactes by mutableStateOf(true)
+    private var notifications by mutableStateOf(true)
+
+    override fun onResume() {
+        super.onResume()
+        alarmesExactes = Moteur.alarmesExactesAutorisees(this)
+        notifications = Notifications.autorisees(this)
+        vm.rafraichirRappels()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= 33 && !Notifications.autorisees(this)) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
         setContent {
             AppTheme {
                 var onglet by rememberSaveable { mutableStateOf(0) }
@@ -57,6 +78,15 @@ class MainActivity : ComponentActivity() {
                                     medicaments = lignes?.map { it.medicament }.orEmpty(),
                                     onPrendre = vm::prendre, onSauter = vm::sauter, onReporter = vm::reporter,
                                     onAnnuler = vm::annuler, onHorsPlanning = vm::priseHorsPlanning,
+                                    alertes = buildList {
+                                        if (!notifications) add(AlerteAutorisation(
+                                            "Les notifications sont désactivées : aucun rappel ne s'affichera.", "Ouvrir les réglages",
+                                        ) { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) })
+                                        if (!alarmesExactes) add(AlerteAutorisation(
+                                            "Alarmes exactes non autorisées : les rappels peuvent être retardés de plusieurs minutes, surtout téléphone en veille.",
+                                            "Autoriser les alarmes exactes",
+                                        ) { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))) })
+                                    },
                                 )
                             } else {
                                 ListeScreen(

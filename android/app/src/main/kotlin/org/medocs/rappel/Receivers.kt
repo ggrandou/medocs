@@ -3,6 +3,7 @@ package org.medocs.rappel
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import org.medocs.rappel.rappels.asynchrone
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -27,5 +28,7 @@ class RescheduleReceiver : BroadcastReceiver() {
             else -> intent.action ?: "?"
         }
         Scheduler.rescheduleAll(context, raison)
+        // Moteur réel : rattrape les rappels d'un téléphone éteint / d'un changement d'heure, puis réarme
+        asynchrone { org.medocs.rappel.rappels.Moteur.executer(context) }
     }
 }

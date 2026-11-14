@@ -31,6 +31,8 @@ import org.medocs.rappel.data.PlanningHeure
 import org.medocs.rappel.data.Prise
 import org.medocs.rappel.data.Repository
 import org.medocs.rappel.data.StatutPrise
+import org.medocs.rappel.rappels.Moteur
+import org.medocs.rappel.rappels.Notifications
 import org.medocs.rappel.domain.EtatOccurrence
 import org.medocs.rappel.domain.Occurrence
 import org.medocs.rappel.domain.etatOccurrence
@@ -86,6 +88,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Recale l'alarme système après toute modification des données (plannings, prises, stock). */
+    private suspend fun recaler() = Moteur.executer(getApplication(), traiter = false)
+
+    /** À l'ouverture de l'app : rattrape ce qui aurait dû être notifié (alarme perdue, arrêt forcé…). */
+    fun rafraichirRappels() = viewModelScope.launch(Dispatchers.IO) { Moteur.executer(getApplication()) }
+
     // --- Écran « Aujourd'hui » ---
     private val zone = ZoneId.systemDefault()
     private fun debutDuJour(d: java.time.LocalDate) = d.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -118,24 +126,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun prendre(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
         repo.prendre(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+        Notifications.annuler(getApplication(), o)
+        recaler()
     }
 
     fun sauter(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
         repo.sauter(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+        Notifications.annuler(getApplication(), o)
+        recaler()
     }
 
     fun reporter(l: LigneAujourdhui, minutes: Int) = viewModelScope.launch {
         val o = l.occurrence
         val maintenant = System.currentTimeMillis()
         repo.reporter(l.medicament.id, o.quantite, maintenant, maintenant + minutes * 60_000L, o.planningHeure.id, o.date, o.heure)
+        Notifications.annuler(getApplication(), o)
+        recaler()
     }
 
     /** Annule la décision (prise, sautée, reportée) : l'occurrence redevient en attente et le stock est restitué. */
-    fun annuler(prise: Prise) = viewModelScope.launch { repo.annulerPrise(prise.id) }
+    fun annuler(prise: Prise) = viewModelScope.launch { repo.annulerPrise(prise.id); recaler() }
 
     fun priseHorsPlanning(m: Medicament, quantite: Double) = viewModelScope.launch {
         repo.prendre(m.id, quantite, System.currentTimeMillis())
+        recaler()
     }
 
     // --- Plannings ---
@@ -143,9 +158,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun enregistrerPlanning(planning: Planning, heures: List<PlanningHeure>) = viewModelScope.launch {
         repo.enregistrerPlanning(planning, heures)
+        recaler()
     }
 
-    fun supprimerPlanning(planning: Planning) = viewModelScope.launch { db.plannings().supprimer(planning) }
+    fun supprimerPlanning(planning: Planning) = viewModelScope.launch { db.plannings().supprimer(planning); recaler() }
 
     // --- Recherche BDPM ---
     val resultats = MutableStateFlow<List<SpecialiteBdpm>>(emptyList())
@@ -174,15 +190,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun ajouterMedicament(m: Medicament, stockInitial: Double) = viewModelScope.launch {
         val id = db.medicaments().inserer(m)
         if (stockInitial > 0) repo.ajouterStock(id, stockInitial, System.currentTimeMillis())
+        recaler()
     }
 
     fun ajouterStock(medicamentId: Long, quantite: Double) = viewModelScope.launch {
         repo.ajouterStock(medicamentId, quantite, System.currentTimeMillis())
+        recaler()
     }
 
     fun definirStock(medicamentId: Long, stock: Double) = viewModelScope.launch {
         repo.corrigerStock(medicamentId, stock, System.currentTimeMillis())
+        recaler()
     }
 
-    fun supprimer(m: Medicament) = viewModelScope.launch { db.medicaments().supprimer(m) }
+    fun supprimer(m: Medicament) = viewModelScope.launch { db.medicaments().supprimer(m); recaler() }
 }

@@ -59,6 +59,7 @@ fun AujourdhuiScreen(
     onReporter: (LigneAujourdhui, Int) -> Unit,
     onAnnuler: (Prise) -> Unit,
     onHorsPlanning: (Medicament, Double) -> Unit,
+    alertes: List<AlerteAutorisation> = emptyList(),
 ) {
     var reportDe by remember { mutableStateOf<LigneAujourdhui?>(null) }
     var horsPlanning by remember { mutableStateOf(false) }
@@ -80,6 +81,7 @@ fun AujourdhuiScreen(
         if (etat == null) return@Scaffold
         if (etat.lignes.isEmpty() && etat.ponctuelles.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center) {
+                alertes.forEach { BandeauAutorisation(it) }
                 Text("Aucune prise prévue aujourd'hui.", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (medicaments.isEmpty()) "Ajoute d'abord un médicament dans l'onglet Médicaments."
@@ -94,6 +96,7 @@ fun AujourdhuiScreen(
             contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            items(alertes) { a -> BandeauAutorisation(a) }
             items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
                 CarteOccurrence(l, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
@@ -208,4 +211,17 @@ private fun HorsPlanningDialog(medicaments: List<Medicament>, onFermer: () -> Un
         },
         dismissButton = { TextButton(onClick = onFermer) { Text("Annuler") } },
     )
+}
+
+/** Autorisation système manquante qui empêche les rappels de fonctionner correctement. */
+data class AlerteAutorisation(val message: String, val bouton: String, val action: () -> Unit)
+
+@Composable
+private fun BandeauAutorisation(a: AlerteAutorisation) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(a.message, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = a.action) { Text(a.bouton) }
+        }
+    }
 }

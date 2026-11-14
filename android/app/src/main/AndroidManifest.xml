@@ -26,6 +26,9 @@
             android:name=".ProtoAlarmesActivity"
             android:exported="false" />
 
+        <receiver android:name=".rappels.MoteurReceiver" android:exported="false" />
+        <receiver android:name=".rappels.ActionReceiver" android:exported="false" />
+
         <receiver
             android:name=".AlarmReceiver"
             android:exported="false" />

@@ -15,6 +15,9 @@ interface MedicamentDao {
     @Update suspend fun modifier(m: Medicament)
     @Delete suspend fun supprimer(m: Medicament)
 
+    @Query("SELECT * FROM medicament WHERE archive = 0")
+    suspend fun tousActifs(): List<Medicament>
+
     @Query("SELECT * FROM medicament WHERE id = :id")
     suspend fun parId(id: Long): Medicament?
 
@@ -86,6 +89,10 @@ interface PriseDao {
     /** Prises hors planning dans l'intervalle [debut, fin[ (epoch ms). */
     @Query("SELECT * FROM prise WHERE planningHeureId IS NULL AND horodatage >= :debut AND horodatage < :fin ORDER BY horodatage")
     fun observerPonctuellesEntre(debut: Long, fin: Long): Flow<List<Prise>>
+
+    /** Journal utile au moteur de rappels : occurrences récentes + toutes les prises reportées. */
+    @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND (datePrevue >= :depuis OR statut = 'REPORTEE')")
+    suspend fun pourMoteur(depuis: LocalDate): List<Prise>
 
     @Query("SELECT * FROM prise WHERE statut = 'REPORTEE'")
     suspend fun reportees(): List<Prise>
