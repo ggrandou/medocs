@@ -47,6 +47,7 @@ fun ListeScreen(
     onAideRappels: () -> Unit,
     onSauvegarde: () -> Unit,
     onAPropos: () -> Unit,
+    onPriseEnMain: () -> Unit,
     onPlanning: (LigneMedicament) -> Unit,
     onModifier: (LigneMedicament) -> Unit,
     onHistorique: (LigneMedicament) -> Unit,
@@ -75,6 +76,10 @@ fun ListeScreen(
                         DropdownMenuItem(
                             text = { Text("Sauvegarde : export / import") },
                             onClick = { menu = false; onSauvegarde() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Revoir la prise en main") },
+                            onClick = { menu = false; onPriseEnMain() },
                         )
                         DropdownMenuItem(
                             text = { Text("À propos et avertissement") },

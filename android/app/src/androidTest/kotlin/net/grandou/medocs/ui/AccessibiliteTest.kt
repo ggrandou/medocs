@@ -85,27 +85,8 @@ class AccessibiliteTest {
 
     private var densite: Density = Density(1f)
 
-    private fun <T> prop(n: androidx.compose.ui.semantics.SemanticsNode, k: androidx.compose.ui.semantics.SemanticsPropertyKey<T>): T? =
-        if (n.config.contains(k)) n.config[k] else null
-
-    /**
-     * Contrôles d'accessibilité sur l'arbre sémantique (celui que lit TalkBack) :
-     * - tout élément cliquable a une zone tactile d'au moins 48 x 48 dp ;
-     * - tout élément cliquable a un libellé (texte ou description) : sinon TalkBack dit seulement « bouton » ;
-     * La lisibilité à 200 % se juge sur les captures d'écran (dossier externe de l'application).
-     */
     private fun controlerSemantique(nom: String, echelle: Float) {
-        val minimum = 48f
-        val problemes = mutableListOf<String>()
-        rule.onAllNodes(androidx.compose.ui.test.hasClickAction()).fetchSemanticsNodes().forEach { n ->
-            val b = n.touchBoundsInRoot
-            if (b.width <= 0f || b.height <= 0f) return@forEach // pas affiché (hors de l'écran)
-            val l = b.width / densite.density; val h = b.height / densite.density
-            val libelle = (prop(n, androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString { it.text }
-                ?: prop(n, androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)?.joinToString()).orEmpty()
-            if (l < minimum - 0.5f || h < minimum - 0.5f) problemes += "zone tactile ${l.toInt()}x${h.toInt()} dp < 48 : « $libelle »"
-            if (libelle.isBlank()) problemes += "élément cliquable sans libellé à ${b.left.toInt()},${b.top.toInt()}"
-        }
+        val problemes = rule.problemesDAccessibilite(densite)
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         File(File(ctx.getExternalFilesDir(null), "captures"), "$nom-${(echelle * 100).toInt()}.txt").writeText(problemes.joinToString("\n"))
         org.junit.Assert.assertTrue("Problèmes d'accessibilité ($nom, ${(echelle * 100).toInt()} %) :\n" + problemes.joinToString("\n"), problemes.isEmpty())
@@ -135,7 +116,7 @@ class AccessibiliteTest {
     )
 
     @Composable private fun listeScreen() = ListeScreen(
-        lignes = lignes, onAjouter = {}, onProtoAlarmes = {}, onAideRappels = {}, onSauvegarde = {}, onAPropos = {}, onPlanning = {}, onModifier = {},
+        lignes = lignes, onAjouter = {}, onProtoAlarmes = {}, onAideRappels = {}, onSauvegarde = {}, onAPropos = {}, onPriseEnMain = {}, onPlanning = {}, onModifier = {},
         onHistorique = {}, archives = emptyList(), onRestaurer = {}, onAjouterStock = { _, _ -> }, onDefinirStock = { _, _ -> }, onSupprimer = {},
     )
 

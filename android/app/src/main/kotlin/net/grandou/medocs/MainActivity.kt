@@ -35,6 +35,9 @@ import androidx.compose.runtime.remember
 import net.grandou.medocs.ui.AvertissementDialog
 import net.grandou.medocs.ui.VERSION_AVERTISSEMENT
 import net.grandou.medocs.ui.AideRappelsDialog
+import net.grandou.medocs.ui.Onboarding
+import net.grandou.medocs.ui.ReglagesRappels
+import net.grandou.medocs.ui.VERSION_ONBOARDING
 import net.grandou.medocs.ui.AlerteAutorisation
 import net.grandou.medocs.ui.AppTheme
 import net.grandou.medocs.ui.AppViewModel
@@ -52,7 +55,8 @@ class MainActivity : ComponentActivity() {
     private var notifications by mutableStateOf(true)
     private var batterieOptimisee by mutableStateOf(false)
     private var aideIgnoree by mutableStateOf(false)
-    private var avertissementAccepte by mutableStateOf(true) // vrai par défaut pour éviter un clignotement avant la lecture des préférences
+    private var avertissementAccepte by mutableStateOf(true)
+    private var onboardingVu by mutableStateOf(true)
     // Sauvegarde : le mot de passe saisi attend le retour du sélecteur de fichier ; il n'est jamais enregistré
     private var motDePasseExport: CharArray? = null
     private var fichierAImporter by mutableStateOf<android.net.Uri?>(null)
@@ -65,6 +69,16 @@ class MainActivity : ComponentActivity() {
     private val choisirFichierImport = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> fichierAImporter = uri }
 
     private val prefsUi by lazy { getSharedPreferences("ui", MODE_PRIVATE) }
+
+    /** Première demande : fenêtre du système (Android 13+). Ensuite le système la refuse d'office : on ouvre les réglages. */
+    private fun demanderNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 && !prefsUi.getBoolean("notifications_demandees", false)) {
+            prefsUi.edit().putBoolean("notifications_demandees", true).apply()
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        } else {
+            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -79,9 +93,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        if (Build.VERSION.SDK_INT >= 33 && !Notifications.autorisees(this)) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-        }
+        // Lecture synchrone des préférences : évite d'afficher l'écran principal une fraction de seconde avant le carrousel
+        avertissementAccepte = prefsUi.getInt("avertissement_version", 0) >= VERSION_AVERTISSEMENT
+        onboardingVu = prefsUi.getInt("onboarding_version", 0) >= VERSION_ONBOARDING
         setContent {
             AppTheme {
                 var onglet by rememberSaveable { mutableStateOf(0) }
@@ -93,14 +107,8 @@ class MainActivity : ComponentActivity() {
                 var sauvegarde by rememberSaveable { mutableStateOf(false) }
                 var aPropos by rememberSaveable { mutableStateOf(false) }
                 val versionApp = remember { packageManager.getPackageInfo(packageName, 0).versionName ?: "" }
-                if (!avertissementAccepte) {
-                    AvertissementDialog(premiereFois = true, versionApp = versionApp) {
-                        prefsUi.edit().putInt("avertissement_version", VERSION_AVERTISSEMENT).apply()
-                        avertissementAccepte = true
-                    }
-                } else if (aPropos) {
-                    AvertissementDialog(premiereFois = false, versionApp = versionApp) { aPropos = false }
-                }
+                var revoirPriseEnMain by rememberSaveable { mutableStateOf(false) }
+                if (aPropos) AvertissementDialog(premiereFois = false, versionApp = versionApp) { aPropos = false }
                 val messageSauvegarde by vm.messageSauvegarde.collectAsStateWithLifecycle()
                 if (sauvegarde) SauvegardeDialog(
                     onFermer = { sauvegarde = false },
@@ -127,6 +135,32 @@ class MainActivity : ComponentActivity() {
                     onReglagesBatterie = { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) },
                     onReglagesApp = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                 )
+                if (!onboardingVu || !avertissementAccepte || revoirPriseEnMain) {
+                    Onboarding(
+                        revoir = revoirPriseEnMain && onboardingVu && avertissementAccepte,
+                        avertissementAccepte = avertissementAccepte,
+                        reglages = ReglagesRappels(
+                            notifications = notifications,
+                            alarmesExactesAFaire = Build.VERSION.SDK_INT >= 31,
+                            alarmesExactes = alarmesExactes,
+                            batterieOptimisee = batterieOptimisee,
+                        ),
+                        versionApp = versionApp,
+                        onAccepterAvertissement = {
+                            prefsUi.edit().putInt("avertissement_version", VERSION_AVERTISSEMENT).apply()
+                            avertissementAccepte = true
+                        },
+                        onNotifications = ::demanderNotifications,
+                        onAlarmesExactes = { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))) },
+                        onBatterie = { aide = true },
+                        onTerminer = {
+                            prefsUi.edit().putInt("onboarding_version", VERSION_ONBOARDING).apply()
+                            onboardingVu = true
+                            revoirPriseEnMain = false
+                        },
+                    )
+                    return@AppTheme
+                }
                 val medicamentPlanning = lignes?.firstOrNull { it.medicament.id == planningDe }?.medicament
                 val medicamentModif = lignes?.firstOrNull { it.medicament.id == modificationDe }?.medicament
                 val medicamentHisto = lignes?.firstOrNull { it.medicament.id == historiqueDe }?.medicament
@@ -173,6 +207,7 @@ class MainActivity : ComponentActivity() {
                                     onAideRappels = { aide = true },
                                     onSauvegarde = { sauvegarde = true },
                                     onAPropos = { aPropos = true },
+                                    onPriseEnMain = { revoirPriseEnMain = true },
                                     onPlanning = { planningDe = it.medicament.id },
                                     onModifier = { modificationDe = it.medicament.id },
                                     onHistorique = { historiqueDe = it.medicament.id },

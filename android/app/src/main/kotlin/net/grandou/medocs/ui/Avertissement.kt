@@ -29,6 +29,17 @@ fun AvertissementDialog(premiereFois: Boolean, versionApp: String, onFermer: () 
         title = { Text(if (premiereFois) "Avant de commencer" else "À propos et avertissement") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                TexteAvertissement(versionApp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onFermer) { Text(if (premiereFois) "J'ai compris" else "Fermer") } },
+    )
+}
+
+/** Texte de l'avertissement, partagé par la boîte « À propos » et la page du carrousel de prise en main. */
+@Composable
+fun TexteAvertissement(versionApp: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Un simple aide-mémoire", fontWeight = FontWeight.SemiBold)
                 Text(
                     "Cette application te rappelle l'heure de tes prises et suit ton stock. Elle ne donne aucun conseil médical : " +
@@ -62,8 +73,5 @@ fun AvertissementDialog(premiereFois: Boolean, versionApp: String, onFermer: () 
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text("Version $versionApp", style = MaterialTheme.typography.bodySmall)
-            }
-        },
-        confirmButton = { TextButton(onClick = onFermer) { Text(if (premiereFois) "J'ai compris" else "Fermer") } },
-    )
+    }
 }
