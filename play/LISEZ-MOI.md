@@ -36,3 +36,8 @@ cd android && ./gradlew bundleRelease             # app/build/outputs/bundle/rel
 - Les **alarmes exactes** sont examinées par Google : la justification est prête dans `fiche-fr.md`.
 - Ne **jamais** ajouter `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (restreinte par le Play Store) : l'aide intégrée guide vers les réglages du téléphone.
 - L'application est classée « santé » : garder l'avertissement « simple aide-mémoire » visible et ne rien ajouter qui ressemble à un conseil médical (interactions, posologie…), sous peine de changer de catégorie réglementaire.
+
+## 6. Visuels (`visuels/`)
+- `icone-512.png` (icône 512×512) et `bandeau-1024x500.png` (image de présentation) sont générés depuis `icone.svg` et `bandeau.svg` : `rsvg-convert icone.svg -o icone-512.png`.
+- `captures/clair/` et `captures/sombre/` : 4 captures de 1080×2160 (plus `clair/5-notifications.png`) (rapport 2:1, accepté par le Play Store) avec des **données fictives** (`androidTest/.../store/JeuDeDonneesStore.kt`, lancé avec `-e jeu_store 1` : il ne nettoie PAS, donc uniquement sur le S8 vierge). Barre d'état propre via le mode démo de SystemUI (`sysui_demo_allowed`), taille d'écran forcée par `wm size 1080x2160` (à remettre : `wm size reset`).
+- Volet de notifications (`5-notifications.png`) : lancer `reseed2`-style avec `-e notifs_extra 1` (quatre rappels de l’appli remplissent le volet, ce qui repousse hors cadre les notifications des autres applications : USB, Google… qui donnent une localisation). Vérifier chaque capture avant de la publier.
