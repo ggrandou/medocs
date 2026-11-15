@@ -3,6 +3,7 @@
 build/
 local.properties
 captures/
+!play/visuels/captures/
 .externalNativeBuild/
 .cxx/
 *.apk
