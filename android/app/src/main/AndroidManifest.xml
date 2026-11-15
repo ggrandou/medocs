@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Pas de permission INTERNET : l'application reste 100 % locale. -->
+    <!-- Ajoutée par une bibliothèque, inutile ici : on ne regarde jamais l'état du réseau -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Caméra : lecture du code-barres d'une boîte et prise de photo ; aucune image n'est envoyée nulle part -->
     <uses-permission android:name="android.permission.CAMERA" />
