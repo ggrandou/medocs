@@ -11,7 +11,13 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import net.grandou.medocs.data.Medicament
 import net.grandou.medocs.data.PlanningHeure
@@ -51,6 +57,20 @@ class CalendrierTest {
         rule.onNodeWithContentDescription("Mois précédent").performClick()
         rule.onNodeWithContentDescription("Mois suivant").performClick()
         assertEquals(listOf(YearMonth.of(2026, 10), YearMonth.of(2026, 12)), moisChoisis)
+    }
+
+    @Test fun glisserVersLaGaucheDonneLeMoisSuivantEtVersLaDroiteLePrecedent() {
+        calendrier()
+        rule.onRoot().performTouchInput { swipeLeft() }
+        rule.onRoot().performTouchInput { swipeRight() }
+        assertEquals(listOf(YearMonth.of(2026, 12), YearMonth.of(2026, 10)), moisChoisis)
+    }
+
+    @Test fun unPetitGlissementOuUnDefilementVerticalNeChangePasLeMois() {
+        calendrier()
+        rule.onRoot().performTouchInput { swipe(center, center.copy(x = center.x - 20f)) } // trop court
+        rule.onRoot().performTouchInput { swipeUp() }
+        assertEquals(emptyList<YearMonth>(), moisChoisis)
     }
 
     @Test fun passerDeDecembreAJanvierChangeAussiLAnnee() {

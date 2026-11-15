@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -72,7 +74,7 @@ private fun stylePastille(s: StatutJour): StylePastille {
         StatutJour.A_VENIR_COUVERT ->
             if (sombre) StylePastille(Color(0xFF454A4C), Color(0xFFE6E9EA)) else StylePastille(Color(0xFFD5D9DB), Color(0xFF1B1F20))
         StatutJour.A_VENIR_SANS_STOCK ->
-            if (sombre) StylePastille(Color(0xFFF1F3F4), Color(0xFF111415), Color(0xFFF1F3F4)) else StylePastille(Color.White, Color(0xFF1B1F20), MaterialTheme.colorScheme.outline)
+            if (sombre) StylePastille(Color(0xFFC4CACC), Color(0xFF111415), Color(0xFFC4CACC)) else StylePastille(Color.White, Color(0xFF1B1F20), MaterialTheme.colorScheme.outline)
         StatutJour.SANS_PRESCRIPTION -> StylePastille(Color.Transparent, MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -104,7 +106,18 @@ fun CalendrierScreen(
         topBar = { TopAppBar(title = { Text("Historique", Modifier.semantics { heading() }) }) },
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(padding)
+                // Glisser vers la gauche = mois suivant, vers la droite = mois précédent (les flèches restent disponibles)
+                .pointerInput(mois, onMois) {
+                    var cumul = 0f
+                    val seuil = 64.dp.toPx()
+                    detectHorizontalDragGestures(
+                        onDragStart = { cumul = 0f },
+                        onDragEnd = { if (cumul <= -seuil) onMois(mois.plusMonths(1)) else if (cumul >= seuil) onMois(mois.minusMonths(1)) },
+                        onHorizontalDrag = { _, delta -> cumul += delta },
+                    )
+                }
+                .verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Navigation de mois en mois
@@ -174,7 +187,7 @@ private fun Pastille(date: LocalDate, statut: StatutJour, estAujourdhui: Boolean
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(44.dp).then(if (estAujourdhui) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier),
+            Modifier.size(40.dp).then(if (estAujourdhui) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
             if (statut == StatutJour.SANS_PRESCRIPTION) {
@@ -182,7 +195,7 @@ private fun Pastille(date: LocalDate, statut: StatutJour, estAujourdhui: Boolean
                 Box(Modifier.size(6.dp).clip(CircleShape).background(style.texte.copy(alpha = 0.6f)))
             } else {
                 Box(
-                    Modifier.size(38.dp).clip(CircleShape).background(style.fond)
+                    Modifier.size(34.dp).clip(CircleShape).background(style.fond)
                         .then(if (style.contour != null) Modifier.border(BorderStroke(1.5.dp, style.contour), CircleShape) else Modifier)
                         .clearAndSetSemantics {},
                     contentAlignment = Alignment.Center,
