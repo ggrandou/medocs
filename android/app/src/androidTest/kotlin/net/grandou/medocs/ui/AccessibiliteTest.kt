@@ -170,6 +170,44 @@ class AccessibiliteTest {
         ListeScreen(lignes = emptyList(), onAjouter = {}, onPlanning = {}, onModifier = {}, onHistorique = {}, onAjouterStock = { _, _ -> }, onDefinirStock = { _, _ -> }, onSupprimer = {})
     }
 
+    // --- Onglet Historique : calendrier mensuel et écran d'un jour ---
+
+    /** Un mois où chaque statut apparaît plusieurs fois (le jour 1 est un point : mois qui ne commence pas toujours un lundi). */
+    private val statutsCalendrier: Map<LocalDate, net.grandou.medocs.domain.StatutJour> get() {
+        val mois = java.time.YearMonth.from(aujourdhui)
+        val ordre = net.grandou.medocs.domain.StatutJour.entries
+        return (1..mois.lengthOfMonth()).associate { mois.atDay(it) to ordre[it % ordre.size] }
+    }
+    @Composable private fun calendrierScreen() = CalendrierScreen(
+        mois = java.time.YearMonth.from(aujourdhui), statuts = statutsCalendrier, aujourdhui = aujourdhui, onMois = {}, onJour = {},
+    )
+    @Test fun calendrierPoliceNormale() = verifier("calendrier", 1f) { calendrierScreen() }
+    @Test fun calendrierPolice200() = verifier("calendrier", 2f) { calendrierScreen() }
+    @Test fun calendrierAutreMois() = verifier("calendrier-autre-mois", 1f) {
+        CalendrierScreen(java.time.YearMonth.from(aujourdhui).plusMonths(2), emptyMap(), aujourdhui, {}, {})
+    }
+
+    private fun etatJour(date: LocalDate, etat: EtatOccurrence?): EtatAujourdhui {
+        val a = occurrence(1, 8, pantoprazole).copy(date = date); val b = occurrence(2, 20, doliprane).copy(date = date)
+        return EtatAujourdhui(date, listOf(
+            LigneAujourdhui(a, pantoprazole, etat?.let { prise(a, StatutPrise.PRISE) }, etat ?: EtatOccurrence.EN_RETARD),
+            LigneAujourdhui(b, doliprane, null, EtatOccurrence.EN_RETARD),
+        ), emptyList())
+    }
+    @Composable private fun jourPasse() = AujourdhuiScreen(
+        etat = etatJour(aujourdhui.minusDays(3), EtatOccurrence.PRISE), medicaments = listOf(pantoprazole, doliprane), onPrendre = {}, onSauter = {},
+        onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> }, quand = QuandJour.PASSE, onRetour = {},
+    )
+    @Test fun jourPassePoliceNormale() = verifier("jour-passe", 1f) { jourPasse() }
+    @Test fun jourPassePolice200() = verifier("jour-passe", 2f) { jourPasse() }
+    @Test fun jourFutur() = verifier("jour-futur", 1f) {
+        AujourdhuiScreen(
+            etat = etatJour(aujourdhui.plusDays(3), null).let { e -> e.copy(lignes = e.lignes.map { it.copy(etat = EtatOccurrence.A_VENIR) }) },
+            medicaments = listOf(pantoprazole, doliprane), onPrendre = {}, onSauter = {}, onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> },
+            quand = QuandJour.FUTUR, onRetour = {},
+        )
+    }
+
     @Test fun aujourdhuiPoliceNormale() = verifier("aujourdhui", 1f) { aujourdhuiScreen() }
     @Test fun aujourdhuiPolice200() = verifier("aujourdhui", 2f) { aujourdhuiScreen() }
     @Test fun listePoliceNormale() = verifier("liste", 1f) { listeScreen() }

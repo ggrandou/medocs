@@ -101,6 +101,10 @@ interface PriseDao {
     @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue = :date")
     fun observerPlanifieesDuJour(date: LocalDate): Flow<List<Prise>>
 
+    /** Occurrences planifiées d'un intervalle de dates [debut, fin] inclus (calendrier mensuel). */
+    @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue >= :debut AND datePrevue <= :fin")
+    fun observerPlanifieesEntre(debut: LocalDate, fin: LocalDate): Flow<List<Prise>>
+
     /** Occurrences manquées des derniers jours (strictement avant [avant]), pour les signaler à l'utilisateur. */
     @Query("SELECT * FROM prise WHERE statut = 'MANQUEE' AND datePrevue >= :depuis AND datePrevue < :avant ORDER BY datePrevue DESC, heurePrevue DESC")
     fun observerManquees(depuis: LocalDate, avant: LocalDate): Flow<List<Prise>>

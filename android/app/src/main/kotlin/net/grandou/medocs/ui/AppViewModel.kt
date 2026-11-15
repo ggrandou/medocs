@@ -27,6 +27,7 @@ import net.grandou.medocs.data.AppDatabase
 import net.grandou.medocs.photos.Photos
 import net.grandou.medocs.data.Chiffrement
 import net.grandou.medocs.data.Medicament
+import net.grandou.medocs.data.MedicamentAvecStock
 import net.grandou.medocs.data.MotDePasseIncorrect
 import net.grandou.medocs.data.SauvegardeInvalide
 import net.grandou.medocs.data.SauvegardeJson
@@ -41,6 +42,8 @@ import net.grandou.medocs.rappels.Notifications
 import net.grandou.medocs.domain.EntreeHistorique
 import net.grandou.medocs.domain.fusionnerHistorique
 import net.grandou.medocs.domain.EtatOccurrence
+import net.grandou.medocs.domain.StatutJour
+import net.grandou.medocs.domain.statutsDuMois
 import net.grandou.medocs.domain.Occurrence
 import net.grandou.medocs.domain.etatOccurrence
 import net.grandou.medocs.domain.occurrencesDuJour
@@ -50,6 +53,7 @@ import net.grandou.medocs.domain.ProjectionStock
 import net.grandou.medocs.domain.projeterStock
 import net.grandou.medocs.domain.stockFaible
 import java.time.LocalDate
+import java.time.YearMonth
 
 data class LigneMedicament(
     val medicament: Medicament,
@@ -120,6 +124,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     private val jour = horloge.map { it.toLocalDate() }.distinctUntilChanged()
 
+    /** Prises prévues et ponctuelles d'une date, avec l'état de chacune à l'instant [maintenant]. */
+    private fun construireEtat(
+        date: LocalDate,
+        medicaments: List<MedicamentAvecStock>,
+        plannings: List<PlanningAvecHeures>,
+        planifiees: List<Prise>,
+        ponctuelles: List<Prise>,
+        maintenant: LocalDateTime,
+    ): EtatAujourdhui {
+        val parId = medicaments.associate { it.medicament.id to it.medicament }
+        val lignes = occurrencesDuJour(plannings, date).mapNotNull { occ ->
+            val m = parId[occ.medicamentId] ?: return@mapNotNull null
+            val prise = planifiees.firstOrNull { it.planningHeureId == occ.planningHeure.id }
+            LigneAujourdhui(occ, m, prise, etatOccurrence(occ, prise, maintenant))
+        }
+        return EtatAujourdhui(date, lignes, ponctuelles.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } })
+    }
+
     val aujourdhui: StateFlow<EtatAujourdhui?> = combine(
         db.medicaments().observerAvecStock(),
         db.plannings().observerTousLesActifs(),
@@ -127,16 +149,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         jour.flatMapLatest { d -> db.prises().observerPonctuellesEntre(debutDuJour(d), debutDuJour(d.plusDays(1))) },
         horloge,
     ) { medicaments, plannings, planifiees, ponctuelles, maintenant ->
-        val parId = medicaments.associate { it.medicament.id to it.medicament }
-        val lignes = occurrencesDuJour(plannings, maintenant.toLocalDate()).mapNotNull { occ ->
-            val m = parId[occ.medicamentId] ?: return@mapNotNull null
-            val prise = planifiees.firstOrNull { it.planningHeureId == occ.planningHeure.id }
-            LigneAujourdhui(occ, m, prise, etatOccurrence(occ, prise, maintenant))
-        }
-        EtatAujourdhui(
-            maintenant.toLocalDate(), lignes,
-            ponctuelles.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } },
-        )
+        construireEtat(maintenant.toLocalDate(), medicaments, plannings, planifiees, ponctuelles, maintenant)
     }.let { base ->
         combine(
             base,
@@ -148,16 +161,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Même vue que « Aujourd'hui » pour un autre jour (ouvert depuis le calendrier de l'onglet Historique). */
+    fun jour(date: LocalDate): Flow<EtatAujourdhui> = combine(
+        db.medicaments().observerAvecStock(),
+        db.plannings().observerTousLesActifs(),
+        db.prises().observerPlanifieesDuJour(date),
+        db.prises().observerPonctuellesEntre(debutDuJour(date), debutDuJour(date.plusDays(1))),
+        horloge,
+    ) { medicaments, plannings, planifiees, ponctuelles, maintenant ->
+        construireEtat(date, medicaments, plannings, planifiees, ponctuelles, maintenant)
+    }
+
+    /** Statut de chaque jour d'un mois pour le calendrier de l'onglet Historique. */
+    fun mois(mois: YearMonth): Flow<Map<LocalDate, StatutJour>> = combine(
+        db.medicaments().observerAvecStock(),
+        db.plannings().observerTousLesActifs(),
+        db.prises().observerPlanifieesEntre(mois.atDay(1), mois.atEndOfMonth()),
+        jour.flatMapLatest { d -> db.prises().observerTraiteesDepuis(d) },
+        horloge,
+    ) { medicaments, plannings, prises, traitees, maintenant ->
+        val visibles = medicaments.map { it.medicament.id }.toSet()
+        statutsDuMois(
+            mois, maintenant,
+            plannings.filter { it.planning.medicamentId in visibles },
+            prises,
+            medicaments.associate { it.medicament.id to it.stock },
+            traitees.mapNotNull { p -> p.planningHeureId?.let { it to p.datePrevue!! } }.toSet(),
+        )
+    }.distinctUntilChanged()
+
+    /**
+     * Instant enregistré pour une décision : maintenant, sauf pour un jour passé corrigé après coup, où on garde l'heure
+     * prévue (le journal et le stock restent datés du bon jour).
+     */
+    private fun instantDe(o: Occurrence): Long =
+        if (o.date.isBefore(LocalDate.now())) LocalDateTime.of(o.date, o.heure).atZone(zone).toInstant().toEpochMilli() else System.currentTimeMillis()
+
     fun prendre(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
-        repo.prendre(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+        repo.prendre(l.medicament.id, o.quantite, instantDe(o), o.planningHeure.id, o.date, o.heure)
         Notifications.annuler(getApplication(), o)
         recaler()
     }
 
     fun sauter(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
-        repo.sauter(l.medicament.id, o.quantite, System.currentTimeMillis(), o.planningHeure.id, o.date, o.heure)
+        repo.sauter(l.medicament.id, o.quantite, instantDe(o), o.planningHeure.id, o.date, o.heure)
         Notifications.annuler(getApplication(), o)
         recaler()
     }

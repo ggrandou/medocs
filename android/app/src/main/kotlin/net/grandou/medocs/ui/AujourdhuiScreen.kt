@@ -1,5 +1,6 @@
 package net.grandou.medocs.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.res.painterResource
@@ -60,6 +62,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val FORMAT_JOUR = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE)
+private val FORMAT_JOUR_ANNEE = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.FRANCE)
+
+/** Le jour affiché : aujourd'hui (rappels, report possible), un jour passé (correction), ou un jour à venir (lecture seule). */
+enum class QuandJour { AUJOURDHUI, PASSE, FUTUR }
 
 private fun heureDe(ms: Long): LocalTime = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0)
 
@@ -74,22 +80,36 @@ fun AujourdhuiScreen(
     onAnnuler: (Prise) -> Unit,
     onHorsPlanning: (Medicament, Double) -> Unit,
     alertes: List<AlerteAutorisation> = emptyList(),
+    quand: QuandJour = QuandJour.AUJOURDHUI,
+    /** Non nul quand l'écran est ouvert depuis le calendrier : affiche la flèche de retour. */
+    onRetour: (() -> Unit)? = null,
 ) {
+    if (onRetour != null) BackHandler(onBack = onRetour)
     var reportDe by remember { mutableStateOf<LigneAujourdhui?>(null) }
     var horsPlanning by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(title = {
-                Column {
-                    Text("Aujourd'hui")
-                    etat?.let { Text(it.date.format(FORMAT_JOUR).replaceFirstChar { c -> c.uppercase() }, style = MaterialTheme.typography.bodyMedium) }
-                }
-            })
+            TopAppBar(
+                title = {
+                    Column {
+                        if (quand == QuandJour.AUJOURDHUI) {
+                            Text("Aujourd'hui", Modifier.semantics { heading() })
+                            etat?.let { Text(it.date.format(FORMAT_JOUR).replaceFirstChar { c -> c.uppercase() }, style = MaterialTheme.typography.bodyMedium) }
+                        } else {
+                            etat?.let { Text(it.date.format(FORMAT_JOUR_ANNEE).replaceFirstChar { c -> c.uppercase() }, Modifier.semantics { heading() }) }
+                            Text(if (quand == QuandJour.PASSE) "Corrige les prises si besoin" else "Jour à venir", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                },
+                navigationIcon = {
+                    if (onRetour != null) IconButton(onClick = onRetour) { Icon(painterResource(R.drawable.ic_retour), contentDescription = "Retour") }
+                },
+            )
         },
         floatingActionButton = {
-            if (medicaments.isNotEmpty()) ExtendedFloatingActionButton(onClick = { horsPlanning = true }) { Text("+ Prise hors planning") }
+            if (quand == QuandJour.AUJOURDHUI && medicaments.isNotEmpty()) ExtendedFloatingActionButton(onClick = { horsPlanning = true }) { Text("+ Prise hors planning") }
         },
     ) { padding ->
         if (etat == null) return@Scaffold
@@ -97,10 +117,13 @@ fun AujourdhuiScreen(
             Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 alertes.forEach { BandeauAutorisation(it) }
                 IllustrationPage(Dessin.CALENDRIER)
-                Text("Aucune prise prévue aujourd'hui.", style = MaterialTheme.typography.titleMedium)
+                Text(if (quand == QuandJour.AUJOURDHUI) "Aucune prise prévue aujourd'hui." else "Aucune prise prévue ce jour-là.", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (medicaments.isEmpty()) "Ajoute d'abord un médicament dans l'onglet Médicaments."
-                    else "Définis un planning depuis l'onglet Médicaments (touche un médicament, puis Planning).",
+                    when {
+                        quand != QuandJour.AUJOURDHUI -> "Aucun planning ne prévoit de prise à cette date."
+                        medicaments.isEmpty() -> "Ajoute d'abord un médicament dans l'onglet Médicaments."
+                        else -> "Définis un planning depuis l'onglet Médicaments (touche un médicament, puis Planning)."
+                    },
                     style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
@@ -114,14 +137,14 @@ fun AujourdhuiScreen(
             items(alertes.filter { it.critique }) { a -> BandeauAutorisation(a) }
             if (etat.manqueesRecentes.isNotEmpty()) item { BandeauManquees(etat.manqueesRecentes) }
             // Journée terminée : toutes les prises du planning sont faites, sautées ou manquées
-            if (etat.lignes.isNotEmpty() && etat.lignes.none { it.etat.enAttente }) item {
+            if (quand == QuandJour.AUJOURDHUI && etat.lignes.isNotEmpty() && etat.lignes.none { it.etat.enAttente }) item {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     IllustrationPage(Dessin.TOUT_FAIT, 120.dp)
                     Text("C'est tout pour aujourd'hui", style = MaterialTheme.typography.titleMedium)
                 }
             }
             items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
-                CarteOccurrence(l, onPrendre, onSauter, { reportDe = l }, onAnnuler)
+                CarteOccurrence(l, quand, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
             if (etat.ponctuelles.isNotEmpty()) {
                 item { Text("Prises hors planning", Modifier.padding(top = 8.dp).semantics { heading() }, style = MaterialTheme.typography.titleSmall) }
@@ -165,6 +188,7 @@ fun AujourdhuiScreen(
 @Composable
 private fun CarteOccurrence(
     l: LigneAujourdhui,
+    quand: QuandJour,
     onPrendre: (LigneAujourdhui) -> Unit,
     onSauter: (LigneAujourdhui) -> Unit,
     onReporter: () -> Unit,
@@ -194,7 +218,7 @@ private fun CarteOccurrence(
             }
             val statut = when (l.etat) {
                 EtatOccurrence.A_VENIR -> null
-                EtatOccurrence.EN_RETARD -> "En retard"
+                EtatOccurrence.EN_RETARD -> if (quand == QuandJour.PASSE) "Non pris" else "En retard"
                 EtatOccurrence.REPORTEE -> "Reportée à ${l.prise?.reporteJusqua?.let(::heureDe)}"
                 EtatOccurrence.PRISE -> "Pris à ${l.prise?.let { heureDe(it.horodatage) }}"
                 EtatOccurrence.SAUTEE -> "Sautée"
@@ -214,14 +238,17 @@ private fun CarteOccurrence(
                 }
             }
           }
-            if (l.etat.enAttente) {
+            if (quand == QuandJour.FUTUR) {
+                // Jour à venir : lecture seule, on ne valide pas une prise à l'avance
+            } else if (l.etat.enAttente) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     // Largeur = celle du contenu (jamais de partage forcé : un bouton plus étroit que son texte le rogne).
                     // Trois actions de MÊME style : un bouton plein « Pris » se lisait comme un état déjà validé.
                     // Libellés complets pour TalkBack : « J'ai pris » seul ne dit pas de quelle prise il s'agit.
                     val quoi = "${l.medicament.nom}, ${o.heure}"
                     BoutonAction("J'ai pris", R.drawable.ic_action_pris, "J'ai pris : $quoi") { onPrendre(l) }
-                    BoutonAction("Reporter", R.drawable.ic_action_reporter, "Reporter : $quoi") { onReporter() }
+                    // Reporter n'a de sens que pour la journée en cours (le rappel est reprogrammé dans l'heure qui suit)
+                    if (quand == QuandJour.AUJOURDHUI) BoutonAction("Reporter", R.drawable.ic_action_reporter, "Reporter : $quoi") { onReporter() }
                     BoutonAction("Sauter", R.drawable.ic_action_sauter, "Sauter : $quoi") { onSauter(l) }
                 }
             } else {
@@ -291,7 +318,7 @@ private fun BandeauManquees(manquees: List<PonctuelleAujourdhui>) {
                 val quand = m.prise.datePrevue?.let { formaterDate(it) } ?: ""
                 Text("$quand ${m.prise.heurePrevue ?: ""} — ${m.medicament.nom}", style = MaterialTheme.typography.bodyMedium)
             }
-            Text("Détail et corrections : onglet Médicaments > Historique.", style = MaterialTheme.typography.bodySmall)
+            Text("Détail et corrections : onglet Historique, en touchant le jour.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -312,7 +339,7 @@ private fun BoutonAction(libelle: String, icone: Int, description: String, onCli
 }
 
 /** Couleur de fond et de texte d'un statut (contrastes > 7:1). Hors palette de l'icône : vert = fait, jaune = reporté, orange = en retard, rouge = sautée ou manquée. */
-private fun couleursStatut(etat: EtatOccurrence, sombre: Boolean): Pair<Color, Color> = when (etat) {
+internal fun couleursStatut(etat: EtatOccurrence, sombre: Boolean): Pair<Color, Color> = when (etat) {
     EtatOccurrence.PRISE -> if (sombre) Color(0xFF1E4D2B) to Color(0xFFCDEBD3) else Color(0xFFCDEBD3) to Color(0xFF00210C)
     EtatOccurrence.REPORTEE -> if (sombre) Color(0xFF665200) to Color(0xFFFFF3A0) else Color(0xFFFFF3A0) to Color(0xFF221B00)
     EtatOccurrence.EN_RETARD -> if (sombre) Color(0xFF8A4A00) to Color(0xFFFFE0C2) else Color(0xFFFFCF99) to Color(0xFF2E1500)

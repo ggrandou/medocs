@@ -40,6 +40,11 @@ import net.grandou.medocs.ui.AppTheme
 import net.grandou.medocs.ui.BarreNavigation
 import net.grandou.medocs.ui.AppViewModel
 import net.grandou.medocs.ui.AujourdhuiScreen
+import net.grandou.medocs.ui.CalendrierScreen
+import net.grandou.medocs.ui.ONGLET_HISTORIQUE
+import net.grandou.medocs.ui.QuandJour
+import java.time.LocalDate
+import java.time.YearMonth
 import net.grandou.medocs.ui.HistoriqueScreen
 import net.grandou.medocs.ui.ListeScreen
 import net.grandou.medocs.ui.PlusScreen
@@ -50,6 +55,8 @@ import net.grandou.medocs.ui.ArchivesScreen
 import net.grandou.medocs.ui.SauvegardeScreen
 import net.grandou.medocs.ui.ModifierMedicamentScreen
 import net.grandou.medocs.ui.PlanningScreen
+
+private const val AUCUN_JOUR = Long.MIN_VALUE
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -129,6 +136,9 @@ class MainActivity : ComponentActivity() {
                 var revoirPriseEnMain by rememberSaveable { mutableStateOf(false) }
                 var archivesOuvert by rememberSaveable { mutableStateOf(false) }
                 var apparence by rememberSaveable { mutableStateOf(false) }
+                // Onglet Historique : mois affiché (« 2026-11 ») et jour ouvert (jour d'époque, AUCUN_JOUR si aucun) : ici, pas dans l'onglet, pour survivre à l'ouverture d'un jour
+                var moisCalendrier by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
+                var jourOuvert by rememberSaveable { mutableLongStateOf(AUCUN_JOUR) }
                 val messageSauvegarde by vm.messageSauvegarde.collectAsStateWithLifecycle()
                 fichierAImporter?.let { uri ->
                     ImportDialog(
@@ -195,6 +205,18 @@ class MainActivity : ComponentActivity() {
                         },
                         onImporter = { sauvegarde = false; choisirFichierImport.launch(arrayOf("*/*")) },
                     )
+                    jourOuvert != AUCUN_JOUR -> {
+                        val date = LocalDate.ofEpochDay(jourOuvert)
+                        val etatDuJour by remember(date) { vm.jour(date) }.collectAsStateWithLifecycle(null)
+                        AujourdhuiScreen(
+                            etat = etatDuJour,
+                            medicaments = lignes?.map { it.medicament }.orEmpty(),
+                            onPrendre = vm::prendre, onSauter = vm::sauter, onReporter = vm::reporter,
+                            onAnnuler = vm::annuler, onHorsPlanning = vm::priseHorsPlanning,
+                            quand = when { date.isBefore(LocalDate.now()) -> QuandJour.PASSE; date.isAfter(LocalDate.now()) -> QuandJour.FUTUR; else -> QuandJour.AUJOURDHUI },
+                            onRetour = { jourOuvert = AUCUN_JOUR },
+                        )
+                    }
                     medicamentModif != null -> ModifierMedicamentScreen(vm, medicamentModif, onRetour = { modificationDe = 0L })
                     medicamentHisto != null -> HistoriqueScreen(vm, medicamentHisto, onRetour = { historiqueDe = 0L })
                     ajout -> AjoutScreen(vm, onTermine = { ajout = false })
@@ -223,6 +245,14 @@ class MainActivity : ComponentActivity() {
                                             "Autoriser les alarmes exactes",
                                         ) { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))) })
                                     },
+                                )
+                            } else if (onglet == ONGLET_HISTORIQUE) {
+                                val mois = YearMonth.parse(moisCalendrier)
+                                val statuts by remember(mois) { vm.mois(mois) }.collectAsStateWithLifecycle(emptyMap())
+                                CalendrierScreen(
+                                    mois = mois, statuts = statuts, aujourdhui = LocalDate.now(),
+                                    onMois = { moisCalendrier = it.toString() },
+                                    onJour = { jourOuvert = it.toEpochDay() },
                                 )
                             } else if (onglet == 2) {
                                 PlusScreen(
