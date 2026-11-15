@@ -114,7 +114,8 @@ fun PlanningScreen(vm: AppViewModel, medicament: Medicament, onRetour: () -> Uni
     }
 }
 
-private class HeureEditable(var heure: LocalTime, dose: String) {
+/** [id] : identifiant de l'heure d'origine (0 pour une heure ajoutée), pour qu'un changement d'heure reste la MÊME heure du planning. */
+private class HeureEditable(var heure: LocalTime, dose: String, val id: Long = 0) {
     var dose by mutableStateOf(dose)
     var heureEtat by mutableStateOf(heure)
 }
@@ -136,7 +137,7 @@ private fun FormulairePlanning(
     var actif by remember { mutableStateOf(p.actif) }
     val heures = remember {
         mutableStateListOf<HeureEditable>().apply {
-            initial.heures.sortedBy { it.heure }.forEach { add(HeureEditable(it.heure, formaterQuantite(it.quantite)).also { h -> h.heureEtat = it.heure }) }
+            initial.heures.sortedBy { it.heure }.forEach { add(HeureEditable(it.heure, formaterQuantite(it.quantite), it.id).also { h -> h.heureEtat = it.heure }) }
         }
     }
 
@@ -221,7 +222,7 @@ private fun FormulairePlanning(
                     intervalleJours = if (recurrence == TypeRecurrence.TOUS_LES_N_JOURS) n!! else 1,
                     dateDebut = debut, dateFin = fin, actif = actif,
                 )
-                onEnregistrer(planning, heures.sortedBy { it.heureEtat }.map { PlanningHeure(planningId = p.id, heure = it.heureEtat, quantite = lireDecimal(it.dose)!!) })
+                onEnregistrer(planning, heures.sortedBy { it.heureEtat }.map { PlanningHeure(id = it.id, planningId = p.id, heure = it.heureEtat, quantite = lireDecimal(it.dose)!!) })
             },
         ) { Text("Enregistrer") }
     }

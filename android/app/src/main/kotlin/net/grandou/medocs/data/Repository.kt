@@ -81,7 +81,7 @@ class Repository(private val db: AppDatabase) {
     }
 
     /**
-     * Crée ou modifie un planning. Les heures inchangées gardent leur identifiant : une prise déjà notée aujourd'hui reste donc
+     * Crée ou modifie un planning. Les heures gardent leur identifiant, même si leur horaire change : une prise déjà notée aujourd'hui reste donc
      * reliée à son heure ; une heure retirée détache ses prises (elles passent en « hors planning »).
      * Le passé n'est pas concerné : l'historique se lit dans le journal des prises (voir CLAUDE.md), pas dans les plannings.
      */
@@ -97,17 +97,30 @@ class Repository(private val db: AppDatabase) {
         planning.id
     }
 
-    /** Aligne les heures d'un planning sur la nouvelle liste en gardant l'identifiant des heures inchangées. */
+    /**
+     * Aligne les heures d'un planning sur la nouvelle liste. Une heure est reconnue par son identifiant (l'éditeur le conserve) :
+     * changer 10 h 30 en 10 h 00 modifie la MÊME heure, donc la prise déjà notée ce jour-là reste reliée. Sans identifiant (appelant
+     * qui n'en fournit pas), on retombe sur l'égalité d'heure ; sinon l'heure est nouvelle et les anciennes non reprises sont supprimées.
+     */
     private suspend fun fusionnerHeures(anciennes: List<PlanningHeure>, nouvelles: List<PlanningHeure>, planningId: Long) {
         val restantes = anciennes.toMutableList()
+        val sansId = mutableListOf<PlanningHeure>()
         for (h in nouvelles) {
+            val i = if (h.id != 0L) restantes.indexOfFirst { it.id == h.id } else -1
+            if (i >= 0) majHeure(restantes.removeAt(i), h) else sansId += h
+        }
+        for (h in sansId) {
             val i = restantes.indexOfFirst { it.heure == h.heure }
-            if (i >= 0) {
-                val o = restantes.removeAt(i)
-                if (o.quantite != h.quantite) db.plannings().modifierHeure(o.copy(quantite = h.quantite))
-            } else db.plannings().insererHeures(listOf(h.copy(id = 0, planningId = planningId)))
+            if (i >= 0) majHeure(restantes.removeAt(i), h)
+            else db.plannings().insererHeures(listOf(h.copy(id = 0, planningId = planningId)))
         }
         restantes.forEach { db.plannings().supprimerHeure(it.id) }
+    }
+
+    private suspend fun majHeure(ancienne: PlanningHeure, nouvelle: PlanningHeure) {
+        if (ancienne.heure != nouvelle.heure || ancienne.quantite != nouvelle.quantite) {
+            db.plannings().modifierHeure(ancienne.copy(heure = nouvelle.heure, quantite = nouvelle.quantite))
+        }
     }
 
     /**

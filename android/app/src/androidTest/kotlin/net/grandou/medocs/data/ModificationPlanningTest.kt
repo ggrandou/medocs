@@ -120,9 +120,24 @@ class ModificationPlanningTest {
         assertEquals(1, db.plannings().tousLesPlannings().size) // modifié sur place : plus de versions de planning
     }
 
+    @Test fun changerLHeureGardeLaMemeHeureEtLaPriseDuJourResteLiee() = runBlocking {
+        // Cas réel : prise de 8 h notée aujourd'hui, puis l'heure du planning devient 9 h : la prise reste celle de 9 h, pas « hors planning »
+        repo.prendre(medId, 1.0, 2000, heure8().id, aujourdhui, huit)
+        val avant = heure8().id
+        modifier { p, h -> p to listOf(h.single().copy(heure = LocalTime.of(9, 0))) }
+        val ligne = db.prises().toutes().single { it.datePrevue == aujourdhui }
+        assertEquals(avant, ligne.planningHeureId)
+        assertEquals(avant, db.plannings().parId(planningId)!!.heures.single().id)
+        val occurrence = occurrencesDuJour(db.plannings().tousLesActifs(), aujourdhui).single()
+        assertEquals(LocalTime.of(9, 0), occurrence.heure)
+        assertNotNull(db.prises().occurrence(occurrence.planningHeure.id, aujourdhui)) // l'occurrence de 9 h est déjà prise
+        assertEquals(huit, ligne.heurePrevue) // le journal garde l'heure d'origine
+    }
+
     @Test fun uneHeureRetireeDetacheLaPriseDuJourEnPriseHorsPlanning() = runBlocking {
         repo.prendre(medId, 1.0, 2000, heure8().id, aujourdhui, huit)
-        modifier { p, h -> p to listOf(h.single().copy(heure = LocalTime.of(9, 0))) }
+        // Heure retirée et heure différente ajoutée (sans identifiant) : l'ancienne est supprimée, sa prise se détache
+        modifier { p, _ -> p to listOf(PlanningHeure(planningId = 0, heure = LocalTime.of(9, 0), quantite = 1.0)) }
         val detachee = db.prises().toutes().single { it.datePrevue == aujourdhui }
         assertNull(detachee.planningHeureId)
         assertEquals(StatutPrise.PRISE, detachee.statut)
