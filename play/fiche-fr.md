@@ -6,7 +6,7 @@ Textes prêts à coller dans la Play Console. Les champs `<à compléter>` dépe
 
 - **Nom de l'appli** (30 caractères max, 28 ici) : `Mes Médocs : rappel de prise`
 - **Description courte** (80 max, 79 ici) : `Rappels de médicaments, stock et scan de boîte. Gratuit, sans pub, 100 % local.`
-- **Description complète** (4000 max, 2203 ici) :
+- **Description complète** (4000 max, 2512 ici) :
 
 ```
 Mes Médocs est un aide-mémoire pour ne plus oublier tes médicaments : il te prévient à l'heure de chaque prise et suit ton stock. Gratuit, sans publicité, et 100 % privé.
@@ -15,6 +15,7 @@ RAPPELS FIABLES
 • Une notification à l'heure de chaque prise, avec trois boutons : « J'ai pris », Reporter ou Sauter
 • Les rappels restent actifs téléphone en veille, après un redémarrage ou un changement d'heure
 • Plannings souples : tous les jours, certains jours de la semaine, tous les N jours, plusieurs heures et doses par jour (demi-comprimés compris)
+• Le rappel reste affiché tant que tu n'as pas répondu
 • Les prises oubliées sont signalées
 
 AJOUT RAPIDE
@@ -27,12 +28,17 @@ STOCK SOUS CONTRÔLE
 • Une alerte te prévient avant la rupture, en nombre de jours de traitement restants
 • Prises hors planning (douleur, fièvre…), historique complet, archivage des traitements terminés
 
+HISTORIQUE EN UN COUP D'ŒIL
+• Un calendrier mensuel colore chaque jour : tout pris, en partie, aucune prise
+• Touche un jour pour corriger une prise oubliée ou saisie par erreur
+• Les jours à venir indiquent si ton stock suffit
+
 TES DONNÉES RESTENT CHEZ TOI
 • Aucun compte, aucun cloud, aucune publicité, aucun accès à internet
 • Sauvegarde et restauration par un fichier chiffré que tu gardes toi-même, pour changer de téléphone sans rien perdre
 
 PENSÉ POUR TOUS
-• Grandes polices, TalkBack, interface claire en français
+• Grandes polices, TalkBack, modes clair et sombre, interface en français
 • Un carrousel de prise en main t'aide à régler les notifications, les alarmes exactes et l'économie d'énergie
 
 LIBRE
@@ -88,5 +94,5 @@ Aucune donnée n'est collectée ni partagée : l'application n'a pas la permissi
 ## Notes de version de la 1re publication
 
 ```
-Première version de Mes Médocs : rappels de prise à l'heure, plannings souples, stock avec alerte avant rupture, scan du code-barres de la boîte, photo, sauvegarde chiffrée, grandes polices et TalkBack.
+Première version de Mes Médocs : rappels de prise à l'heure, plannings souples, stock avec alerte avant rupture, scan du code-barres de la boîte, photo, historique en calendrier, sauvegarde chiffrée, grandes polices et TalkBack.
 ```
