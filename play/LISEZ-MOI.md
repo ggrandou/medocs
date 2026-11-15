@@ -1,6 +1,6 @@
 # Publier sur Google Play : marche à suivre
 
-Dossier de préparation. Les textes sont dans `fiche-fr.md` et `confidentialite-fr.md`.
+Dossier de préparation. Les textes sont dans `fiche-fr.md` et `../docs/confidentialite.md` (publiée par GitHub Pages).
 
 ## 1. Compte développeur
 - Compte Google Play Console (frais d'inscription uniques, vérification d'identité obligatoire).

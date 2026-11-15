@@ -1,9 +1,12 @@
-# Politique de confidentialité de Mes Médocs
+---
+title: Politique de confidentialité de Mes Médocs
+lang: fr
+---
 
 *Dernière mise à jour : 14 novembre 2026*
 
-**Éditeur :** `<à compléter : nom ou raison sociale>`
-**Contact :** `<à compléter : adresse e-mail>`
+**Éditeur :** Gilles Grandou  
+**Contact :** [gilles.apps@grandou.net](mailto:gilles.apps@grandou.net)
 
 ## En deux phrases
 

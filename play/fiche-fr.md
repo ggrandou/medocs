@@ -49,8 +49,8 @@ Mes Médocs est un simple aide-mémoire. Il ne donne aucun conseil médical, ne 
 | Identifiant du paquet | `net.grandou.medocs` (définitif après publication) |
 | Catégorie | Santé et remise en forme (une appli de rappel n'est pas un outil médical clinique) |
 | Gratuite / payante | Gratuite, sans achat intégré, sans publicité |
-| Adresse e-mail de contact | `<à compléter>` (visible publiquement) |
-| URL de la politique de confidentialité | `<à compléter>` : héberger `play/confidentialite-fr.md` sur une page publique (par exemple sur grandou.net) |
+| Adresse e-mail de contact | gilles.apps@grandou.net (visible publiquement) |
+| URL de la politique de confidentialité | `https://ggrandou.github.io/medocs/confidentialite` (GitHub Pages, dossier `docs/` de la branche `main`) |
 | Public cible | 18 ans et plus (évite le régime « applis pour enfants ») |
 | Classification du contenu (questionnaire IARC) | Aucune violence, aucun contenu sexuel, aucun langage grossier, aucune drogue illustrée, aucun jeu d'argent, aucun partage d'achats : résultat attendu « tous publics » |
 
