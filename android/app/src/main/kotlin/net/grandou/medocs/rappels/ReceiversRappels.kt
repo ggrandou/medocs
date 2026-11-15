@@ -35,7 +35,18 @@ class ActionReceiver : BroadcastReceiver() {
         val quantite = intent.getDoubleExtra(EXTRA_QTE, 0.0)
         if (med < 0 || ph < 0) return@asynchrone
 
-        val repo = Repository(AppDatabase.get(context))
+        val db = AppDatabase.get(context)
+        val repo = Repository(db)
+        if (intent.action == Notifications.ACTION_BALAYEE) {
+            // Notification balayée : si la prise n'a pas reçu de réponse, on la réaffiche
+            val ligne = db.prises().occurrence(ph, date)
+            val existe = db.plannings().tousLesActifs().any { p -> p.heures.any { it.id == ph } }
+            if (existe && (ligne == null || ligne.statut == net.grandou.medocs.data.StatutPrise.REPORTEE)) {
+                val fictive = net.grandou.medocs.data.PlanningHeure(id = ph, planningId = 0, heure = heure, quantite = quantite)
+                db.medicaments().parId(med)?.let { Notifications.rappel(context, it, Occurrence(fictive, date, med), ligne != null) }
+            }
+            return@asynchrone
+        }
         val maintenant = System.currentTimeMillis()
         when (intent.action) {
             Notifications.ACTION_PRENDRE -> repo.prendre(med, quantite, maintenant, ph, date, heure)

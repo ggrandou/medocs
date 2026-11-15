@@ -21,6 +21,7 @@ object Notifications {
     const val ACTION_PRENDRE = "prendre"
     const val ACTION_SAUTER = "sauter"
     const val ACTION_REPORTER = "reporter"
+    const val ACTION_BALAYEE = "balayee"
 
     /** Identifiant stable d'une occurrence (heure de planning + jour de l'année) pour pouvoir l'annuler. */
     fun idOccurrence(o: Occurrence): Int = (o.planningHeure.id * 1000 + o.date.dayOfYear).toInt()
@@ -44,16 +45,18 @@ object Notifications {
     private fun ouvrirApp(c: Context): PendingIntent =
         PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
 
-    private fun action(c: Context, o: Occurrence, m: Medicament, code: String, rang: Int, titre: String): Notification.Action {
+    private fun intention(c: Context, o: Occurrence, m: Medicament, code: String, rang: Int): PendingIntent {
         val i = Intent(c, ActionReceiver::class.java).setAction(code)
             .putExtra(ActionReceiver.EXTRA_MED, m.id)
             .putExtra(ActionReceiver.EXTRA_PH, o.planningHeure.id)
             .putExtra(ActionReceiver.EXTRA_DATE, o.date.toString())
             .putExtra(ActionReceiver.EXTRA_HEURE, o.heure.toString())
             .putExtra(ActionReceiver.EXTRA_QTE, o.quantite)
-        val pi = PendingIntent.getBroadcast(c, idOccurrence(o) * 4 + rang, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Action.Builder(Icon.createWithResource(c, android.R.drawable.ic_menu_agenda), titre, pi).build()
+        return PendingIntent.getBroadcast(c, idOccurrence(o) * 4 + rang, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
+
+    private fun action(c: Context, o: Occurrence, m: Medicament, code: String, rang: Int, titre: String): Notification.Action =
+        Notification.Action.Builder(Icon.createWithResource(c, android.R.drawable.ic_menu_agenda), titre, intention(c, o, m, code, rang)).build()
 
     fun rappel(c: Context, m: Medicament, o: Occurrence, reporte: Boolean) {
         val nm = gestionnaire(c)
@@ -66,7 +69,10 @@ object Notifications {
             .setStyle(Notification.BigTextStyle().bigText(texte))
             .setCategory(Notification.CATEGORY_REMINDER)
             .setContentIntent(ouvrirApp(c))
-            .setOngoing(false)
+            // Persistante : non balayable avant Android 14 ; plus tard le système la laisse balayer, d'où le
+            // deleteIntent qui la réaffiche tant que la prise n'a pas reçu de réponse (voir ActionReceiver).
+            .setOngoing(true)
+            .setDeleteIntent(intention(c, o, m, ACTION_BALAYEE, 3))
             .addAction(action(c, o, m, Notifications.ACTION_PRENDRE, 0, "J'ai pris"))
             .addAction(action(c, o, m, Notifications.ACTION_REPORTER, 1, "Reporter ${Moteur.REPORT_MIN} min"))
             .addAction(action(c, o, m, Notifications.ACTION_SAUTER, 2, "Sauter"))
