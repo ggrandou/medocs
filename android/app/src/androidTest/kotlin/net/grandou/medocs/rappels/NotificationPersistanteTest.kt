@@ -75,4 +75,31 @@ class NotificationPersistanteTest {
             nm.cancelAll()
         }
     }
+
+    /** Prise créée après son heure (encore dans le délai) : l'ouverture de l'app doit afficher la notification. */
+    @Test fun rattrapageDUnePriseEnRetard() {
+        val maintenant = java.time.LocalDateTime.now()
+        org.junit.Assume.assumeTrue(maintenant.toLocalTime().isAfter(LocalTime.of(0, 30)))
+        val medId = runBlocking { db.medicaments().inserer(Medicament(nom = "TEST RATTRAPAGE", unite = "comprimé")) }
+        try {
+            runBlocking {
+                repo.enregistrerPlanning(
+                    Planning(medicamentId = medId, dateDebut = maintenant.toLocalDate()),
+                    listOf(PlanningHeure(planningId = 0, heure = maintenant.toLocalTime().minusMinutes(20).withSecond(0).withNano(0), quantite = 1.0)),
+                )
+            }
+            val h = runBlocking { db.plannings().actifsDuMedicament(medId).single().heures.single() }
+            val id = Notifications.idOccurrence(Occurrence(h, maintenant.toLocalDate(), medId))
+            assertNull(active(id))
+            runBlocking { Moteur.executer(app) }
+            assertNotNull("notification de rattrapage", active(id))
+            active(id)!!.notification.actions[0].actionIntent.send()
+            assertTrue(attendre { active(id) == null })
+            runBlocking { Moteur.executer(app) }
+            assertNull("pas de rattrapage après réponse", active(id))
+        } finally {
+            runBlocking { db.medicaments().supprimer(db.medicaments().parId(medId)!!) }
+            nm.cancelAll()
+        }
+    }
 }

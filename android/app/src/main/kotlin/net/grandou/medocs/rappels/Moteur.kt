@@ -76,11 +76,37 @@ object Moteur {
                 }
             }
             prises = db.prises().pourMoteur(aujourdhui.minusDays(3))
+            reafficherEnAttente(ctx, db, plannings, prises, zone, delaiMs)
         }
         prefs.edit().putLong("derniere", if (traiter) limite else derniere).apply()
 
         alertesStock(ctx, db, plannings, prises, aujourdhui, prefs)
         programmer(ctx, prochainEvenement(plannings, prises, if (traiter) limite else maxOf(derniere, maintenant), zone, delaiMs)?.instant)
+    }
+
+    /**
+     * Rattrapage : une occurrence d'aujourd'hui échue depuis moins de [delaiMs] sans réponse (ni ligne, ni report en cours)
+     * doit avoir sa notification. Couvre un planning créé ou modifié après l'heure, une notification effacée, une alarme ratée.
+     * Si elle est déjà affichée, rien n'est refait (pas de nouvelle sonnerie).
+     */
+    private suspend fun reafficherEnAttente(
+        ctx: Context, db: AppDatabase,
+        plannings: List<net.grandou.medocs.data.PlanningAvecHeures>,
+        prises: List<net.grandou.medocs.data.Prise>,
+        zone: ZoneId, delaiMs: Long,
+    ) {
+        val maintenant = java.time.LocalDateTime.now(zone)
+        val affichees = ctx.getSystemService(android.app.NotificationManager::class.java).activeNotifications.map { it.id }.toSet()
+        val parOccurrence = prises.filter { it.datePrevue != null }.associateBy { it.planningHeureId to it.datePrevue }
+        for (o in net.grandou.medocs.domain.occurrencesDuJour(plannings, maintenant.toLocalDate())) {
+            val echeance = java.time.LocalDateTime.of(o.date, o.heure)
+            if (echeance.isAfter(maintenant) || !echeance.plusNanos(delaiMs * 1_000_000L).isAfter(maintenant)) continue
+            val ligne = parOccurrence[o.planningHeure.id to o.date]
+            if (ligne != null && ligne.statut != StatutPrise.REPORTEE) continue
+            if (ligne?.reporteJusqua?.let { it > System.currentTimeMillis() } == true) continue // report en cours : l'alarme s'en charge
+            if (Notifications.idOccurrence(o) in affichees) continue
+            db.medicaments().parId(o.medicamentId)?.takeIf { !it.archive }?.let { Notifications.rappel(ctx, it, o, ligne != null) }
+        }
     }
 
     /** Une notification de stock faible au plus par médicament et par jour. */
