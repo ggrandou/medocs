@@ -107,7 +107,7 @@ fun PlanningScreen(vm: AppViewModel, medicament: Medicament, onRetour: () -> Uni
         AlertDialog(
             onDismissRequest = { asupprimer = null },
             title = { Text("Supprimer ce planning ?") },
-            text = { Text("Le journal des prises déjà enregistrées est conservé.") },
+            text = { Text("Les prises déjà enregistrées sont conservées dans l'historique.") },
             confirmButton = { TextButton(onClick = { vm.supprimerPlanning(p); asupprimer = null }) { Text("Supprimer") } },
             dismissButton = { TextButton(onClick = { asupprimer = null }) { Text("Annuler") } },
         )

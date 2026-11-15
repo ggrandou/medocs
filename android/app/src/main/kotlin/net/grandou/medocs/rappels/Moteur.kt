@@ -26,7 +26,7 @@ import java.time.ZoneId
  * puis arme l'alarme suivante.
  */
 object Moteur {
-    const val DELAI_MANQUE_MIN = 120L
+    const val DELAI_MANQUE_MIN = net.grandou.medocs.domain.DELAI_MANQUE_MIN
     const val REPORT_MIN = 30
     private const val REQ_ALARME = 4242
     private const val PREFS = "moteur"

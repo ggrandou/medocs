@@ -117,10 +117,14 @@ fun AujourdhuiScreen(
             Column(Modifier.fillMaxSize().padding(padding).padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 alertes.forEach { BandeauAutorisation(it) }
                 IllustrationPage(Dessin.CALENDRIER)
-                Text(if (quand == QuandJour.AUJOURDHUI) "Aucune prise prévue aujourd'hui." else "Aucune prise prévue ce jour-là.", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    when (quand) { QuandJour.AUJOURDHUI -> "Aucune prise prévue aujourd'hui."; QuandJour.PASSE -> "Aucune prise enregistrée ce jour-là."; QuandJour.FUTUR -> "Aucune prise prévue ce jour-là." },
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 Text(
                     when {
-                        quand != QuandJour.AUJOURDHUI -> "Aucun planning ne prévoit de prise à cette date."
+                        quand == QuandJour.PASSE -> "L'application n'a suivi aucune prise ce jour-là."
+                        quand == QuandJour.FUTUR -> "Aucun planning ne prévoit de prise à cette date."
                         medicaments.isEmpty() -> "Ajoute d'abord un médicament dans l'onglet Médicaments."
                         else -> "Définis un planning depuis l'onglet Médicaments (touche un médicament, puis Planning)."
                     },
@@ -143,7 +147,8 @@ fun AujourdhuiScreen(
                     Text("C'est tout pour aujourd'hui", style = MaterialTheme.typography.titleMedium)
                 }
             }
-            items(etat.lignes, key = { it.occurrence.planningHeure.id }) { l ->
+            // Clé : la ligne du journal quand il y en a une (plusieurs lignes détachées d'un planning n'ont pas d'identifiant d'heure)
+            items(etat.lignes, key = { l -> l.prise?.let { "l${it.id}" } ?: "h${l.occurrence.planningHeure.id}" }) { l ->
                 CarteOccurrence(l, quand, onPrendre, onSauter, { reportDe = l }, onAnnuler)
             }
             if (etat.ponctuelles.isNotEmpty()) {
@@ -222,7 +227,7 @@ private fun CarteOccurrence(
                 EtatOccurrence.REPORTEE -> "Reportée à ${l.prise?.reporteJusqua?.let(::heureDe)}"
                 EtatOccurrence.PRISE -> "Pris à ${l.prise?.let { heureDe(it.horodatage) }}"
                 EtatOccurrence.SAUTEE -> "Sautée"
-                EtatOccurrence.MANQUEE -> "Manquée"
+                EtatOccurrence.MANQUEE -> if (quand == QuandJour.PASSE) "Non pris" else "Manquée"
             }
             // L'état résultant (pris, sauté, reporté) a son propre signe : une icône dans la couleur principale, jamais un bouton plein
             val iconeStatut = when (l.etat) {
@@ -240,7 +245,8 @@ private fun CarteOccurrence(
           }
             if (quand == QuandJour.FUTUR) {
                 // Jour à venir : lecture seule, on ne valide pas une prise à l'avance
-            } else if (l.etat.enAttente) {
+            } else if (l.etat.enAttente || (quand == QuandJour.PASSE && l.etat == EtatOccurrence.MANQUEE)) {
+                // Jour passé : une prise « manquée » se corrige comme une prise non faite
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     // Largeur = celle du contenu (jamais de partage forcé : un bouton plus étroit que son texte le rogne).
                     // Trois actions de MÊME style : un bouton plein « Pris » se lisait comme un état déjà validé.

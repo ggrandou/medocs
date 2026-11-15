@@ -154,6 +154,24 @@ class CalendrierTest {
         rule.onNodeWithContentDescription("Retour").assertIsDisplayed()
     }
 
+    @Test fun uneManqueeDUnJourPasseSeCorrigeCommeUnePriseNonFaite() {
+        var prise: LigneAujourdhui? = null
+        rule.setContent {
+            AppTheme {
+                val date = LocalDate.of(2026, 11, 10)
+                AujourdhuiScreen(
+                    etat = EtatAujourdhui(date, listOf(ligne(date, EtatOccurrence.MANQUEE)), emptyList()), medicaments = listOf(medicament),
+                    onPrendre = { prise = it }, onSauter = {}, onReporter = { _, _ -> }, onAnnuler = {}, onHorsPlanning = { _, _ -> },
+                    quand = QuandJour.PASSE, onRetour = {},
+                )
+            }
+        }
+        rule.onNodeWithText("Non pris").assertIsDisplayed() // « Non pris » et non « Manquée » pour un jour révolu
+        rule.onNodeWithContentDescription("Sauter : DOLIPRANE 1000 mg, 08:00").assertIsDisplayed()
+        rule.onNodeWithContentDescription("J'ai pris : DOLIPRANE 1000 mg, 08:00").performClick()
+        assertEquals(1L, prise?.occurrence?.planningHeure?.id)
+    }
+
     @Test fun unJourFuturEstEnLectureSeule() {
         jour(LocalDate.of(2026, 11, 25), QuandJour.FUTUR, EtatOccurrence.A_VENIR)
         rule.onNodeWithText("Jour à venir").assertIsDisplayed()

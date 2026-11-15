@@ -42,9 +42,9 @@ class CalendrierTest {
     }
 
     @Test fun uneSauteeOuUnOubliDonneOrange() {
-        val s = statuts(listOf(prise(10, 3, StatutPrise.PRISE), prise(11, 3, StatutPrise.SAUTEE), prise(10, 4, StatutPrise.PRISE)))
+        val s = statuts(listOf(prise(10, 3, StatutPrise.PRISE), prise(11, 3, StatutPrise.SAUTEE), prise(10, 4, StatutPrise.PRISE), prise(11, 4, StatutPrise.MANQUEE)))
         assertEquals(StatutJour.PARTIEL, s[jour(3)])
-        assertEquals(StatutJour.PARTIEL, s[jour(4)]) // la prise du soir n'a jamais été notée : non prise
+        assertEquals(StatutJour.PARTIEL, s[jour(4)])
     }
 
     @Test fun uneManqueeOuReporteeNEstPasUnePrise() {
@@ -53,10 +53,52 @@ class CalendrierTest {
         assertEquals(StatutJour.AUCUNE_PRISE, s[jour(4)])
     }
 
-    @Test fun aucuneRepriseDuJournalDonneRouge() {
+    @Test fun lesJoursPassesSansLigneDansLeJournalSontUnPointSaufLaVeille() {
         val s = statuts()
-        assertEquals(StatutJour.AUCUNE_PRISE, s[jour(2)])
-        assertEquals(StatutJour.AUCUNE_PRISE, s[jour(14)])
+        assertEquals(StatutJour.SANS_PRESCRIPTION, s[jour(2)]) // rien d'enregistré : le moteur n'a rien noté ce jour-là
+        assertEquals(StatutJour.SANS_PRESCRIPTION, s[jour(14)]) // pas de ligne : on ne déduit plus rien des plannings (à 12 h, tout est déjà noté)
+    }
+
+    @Test fun uneOccurrencePasEncoreNoteeParLeMoteurCompteCommeNonPrise() {
+        // 00 h 30 le 15 : la prise de 20 h du 14 date de 4 h 30 (notée manquée depuis longtemps) mais celle de 23 h 30, elle, n'a pas 2 h
+        val tard = PlanningAvecHeures(quotidien.planning.copy(id = 5), listOf(PlanningHeure(50, 5, LocalTime.of(23, 30), 1.0)))
+        val minuit30 = LocalDateTime.of(aujourdhui, LocalTime.of(0, 30))
+        assertEquals(StatutJour.AUCUNE_PRISE, statuts(plannings = listOf(tard), maintenant = minuit30)[jour(14)])
+        // 2 h plus tard le moteur l'a notée : sans ligne dans le journal, il ne reste rien à compter
+        assertEquals(StatutJour.SANS_PRESCRIPTION, statuts(plannings = listOf(tard), maintenant = minuit30.plusHours(2).plusMinutes(1))[jour(14)])
+    }
+
+    @Test fun lePasseNeDependPasDesPlannings() {
+        val journal = listOf(
+            prise(10, 3, StatutPrise.PRISE), prise(11, 3, StatutPrise.SAUTEE), // orange
+            prise(10, 5, StatutPrise.PRISE), prise(11, 5, StatutPrise.PRISE), // vert
+            prise(10, 6, StatutPrise.MANQUEE), prise(11, 6, StatutPrise.MANQUEE), // rouge
+        )
+        val avecPlanning = statuts(journal)
+        // Planning modifié (autres heures), supprimé, ou détaché des lignes : le passé reste identique
+        val autrePlanning = PlanningAvecHeures(quotidien.planning.copy(id = 9), listOf(PlanningHeure(90, 9, LocalTime.of(21, 30), 3.0)))
+        for (plannings in listOf(listOf(autrePlanning), emptyList())) {
+            val s = statuts(journal, plannings = plannings)
+            for (j in 3..6) assertEquals("jour $j", avecPlanning[jour(j)], s[jour(j)])
+        }
+        assertEquals(StatutJour.PARTIEL, avecPlanning[jour(3)])
+        assertEquals(StatutJour.TOUT_PRIS, avecPlanning[jour(5)])
+        assertEquals(StatutJour.AUCUNE_PRISE, avecPlanning[jour(6)])
+    }
+
+    @Test fun uneLigneDetacheeDUnPlanningCompteToujours() {
+        val detachees = listOf(prise(10, 3, StatutPrise.PRISE).copy(planningHeureId = null), prise(11, 3, StatutPrise.PRISE).copy(planningHeureId = null))
+        assertEquals(StatutJour.TOUT_PRIS, statuts(detachees, plannings = emptyList())[jour(3)])
+    }
+
+    @Test fun lesPrisesPonctuellesSansDatePrevueNeFontPasUnePrescription() {
+        val ponctuelle = Prise(medicamentId = 1, statut = StatutPrise.PRISE, quantite = 1.0, horodatage = 0)
+        assertEquals(StatutJour.SANS_PRESCRIPTION, statuts(listOf(ponctuelle), plannings = emptyList())[jour(3)])
+    }
+
+    @Test fun seulesLesLignesDuJournalComptentPourUnJourPasse() {
+        // La prise de 8 h est notée prise ; il n'y a aucune ligne pour celle de 20 h : on ne la déduit pas du planning -> tout pris
+        assertEquals(StatutJour.TOUT_PRIS, statuts(listOf(prise(10, 13, StatutPrise.PRISE)))[jour(13)])
     }
 
     @Test fun toutesSauteesDonneRouge() {
@@ -69,7 +111,7 @@ class CalendrierTest {
             Planning(id = 2, medicamentId = 1, recurrence = TypeRecurrence.JOURS_SEMAINE, joursSemaine = masqueJours(DayOfWeek.MONDAY), dateDebut = debut),
             listOf(PlanningHeure(20, 2, LocalTime.of(9, 0), 1.0)),
         )
-        val s = statuts(plannings = listOf(lundis))
+        val s = statuts(listOf(prise(20, 2, StatutPrise.MANQUEE)), plannings = listOf(lundis))
         assertEquals(StatutJour.SANS_PRESCRIPTION, s[jour(3)]) // mardi passé
         assertEquals(StatutJour.SANS_PRESCRIPTION, s[jour(17)]) // mardi futur
         assertEquals(StatutJour.AUCUNE_PRISE, s[jour(2)]) // lundi passé non pris
@@ -82,7 +124,7 @@ class CalendrierTest {
 
     @Test fun avantLeDebutDuPlanningCEstUnPoint() {
         val tard = PlanningAvecHeures(quotidien.planning.copy(dateDebut = jour(10)), quotidien.heures)
-        val s = statuts(plannings = listOf(tard))
+        val s = statuts(listOf(prise(10, 10, StatutPrise.MANQUEE)), plannings = listOf(tard))
         assertEquals(StatutJour.SANS_PRESCRIPTION, s[jour(9)])
         assertEquals(StatutJour.AUCUNE_PRISE, s[jour(10)])
     }

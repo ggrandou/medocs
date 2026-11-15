@@ -51,8 +51,10 @@ class CalendrierViewModelTest {
             val pris = aujourdhui.minusDays(3)
             val oublie = aujourdhui.minusDays(2)
             repo.prendre(medId, 1.0, System.currentTimeMillis(), heureId, pris, LocalTime.of(8, 0))
+            // Le moteur note « manquée » toute occurrence restée sans réponse : on écrit la ligne comme lui
+            repo.sauter(medId, 1.0, System.currentTimeMillis(), heureId, aujourdhui.minusDays(2), LocalTime.of(8, 0), StatutPrise.MANQUEE)
 
-            // Calendrier : vert pour le jour pris, rouge pour le jour oublié, point avant le début du planning, gris pour demain
+            // Calendrier : vert pour le jour pris, rouge pour le jour manqué, point sans ligne dans le journal, gris pour demain
             val statutsPasses = attendre(vm.mois(YearMonth.from(pris))) { it[pris] == StatutJour.TOUT_PRIS }
             assertEquals(StatutJour.AUCUNE_PRISE, vm.mois(YearMonth.from(oublie)).first()[oublie])
             val avantDebut = aujourdhui.minusDays(6)
@@ -64,7 +66,7 @@ class CalendrierViewModelTest {
             // L'écran d'un jour passé affiche la prise ; corriger le jour oublié le fait passer au vert, daté à l'heure prévue
             val etat = attendre(vm.jour(oublie)) { it.lignes.size == 1 }
             assertEquals(oublie, etat.date)
-            assertEquals(net.grandou.medocs.domain.EtatOccurrence.EN_RETARD, etat.lignes.single().etat)
+            assertEquals(net.grandou.medocs.domain.EtatOccurrence.MANQUEE, etat.lignes.single().etat)
             vm.prendre(etat.lignes.single())
             attendre(vm.mois(YearMonth.from(oublie))) { it[oublie] == StatutJour.TOUT_PRIS }
             val prise = db.prises().occurrence(heureId, oublie)!!
@@ -76,6 +78,14 @@ class CalendrierViewModelTest {
             vm.annuler(prise)
             attendre(vm.mois(YearMonth.from(oublie))) { it[oublie] == StatutJour.AUCUNE_PRISE }
             assertEquals(99.0, db.stock().stock(medId), 1e-9)
+            assertEquals(StatutPrise.MANQUEE, db.prises().occurrence(heureId, oublie)!!.statut) // la ligne reste : l'occurrence est toujours dans l'historique
+
+            // Supprimer le planning ne change pas l'historique (il vit dans le journal)
+            vm.supprimerPlanning(db.plannings().actifsDuMedicament(medId).single().planning)
+            attendre(db.plannings().observerTousLesActifs()) { it.none { p -> p.planning.medicamentId == medId } }
+            assertEquals(StatutJour.TOUT_PRIS, vm.mois(YearMonth.from(pris)).first()[pris])
+            assertEquals(StatutJour.AUCUNE_PRISE, vm.mois(YearMonth.from(oublie)).first()[oublie])
+            assertEquals(2, vm.jour(pris).first().lignes.size + vm.jour(oublie).first().lignes.size)
         } finally {
             db.medicaments().tousActifs().filter { it.id == medId }.forEach { db.medicaments().supprimer(it) }
             Moteur.executer(app, traiter = false)

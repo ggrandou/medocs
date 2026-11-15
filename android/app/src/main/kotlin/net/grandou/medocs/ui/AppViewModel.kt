@@ -47,6 +47,7 @@ import net.grandou.medocs.domain.statutsDuMois
 import net.grandou.medocs.domain.Occurrence
 import net.grandou.medocs.domain.etatOccurrence
 import net.grandou.medocs.domain.occurrencesDuJour
+import net.grandou.medocs.domain.occurrencesSansLigneRecentes
 import java.time.LocalDateTime
 import java.time.ZoneId
 import net.grandou.medocs.domain.ProjectionStock
@@ -142,6 +143,42 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return EtatAujourdhui(date, lignes, ponctuelles.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } })
     }
 
+    /**
+     * Jour passé : lu dans le journal (une ligne par occurrence), pas dans les plannings, qui ont pu changer depuis. Seules s'y ajoutent
+     * les occurrences pas encore notées « manquées » par le moteur (moins de 2 h après leur heure).
+     */
+    private fun construireEtatPasse(
+        date: LocalDate,
+        medicaments: List<MedicamentAvecStock>,
+        plannings: List<PlanningAvecHeures>,
+        lignesJournal: List<Prise>,
+        ponctuelles: List<Prise>,
+        maintenant: LocalDateTime,
+    ): EtatAujourdhui {
+        val parId = medicaments.associate { it.medicament.id to it.medicament }
+        val duJournal = lignesJournal.mapNotNull { p ->
+            val m = parId[p.medicamentId] ?: return@mapNotNull null
+            val heure = p.heurePrevue ?: java.time.LocalTime.MIDNIGHT
+            val occurrence = Occurrence(PlanningHeure(id = p.planningHeureId ?: 0L, planningId = 0L, heure = heure, quantite = p.quantite), date, m.id)
+            val etat = when (p.statut) {
+                StatutPrise.PRISE -> EtatOccurrence.PRISE
+                StatutPrise.SAUTEE -> EtatOccurrence.SAUTEE
+                StatutPrise.MANQUEE -> EtatOccurrence.MANQUEE
+                StatutPrise.REPORTEE -> EtatOccurrence.EN_RETARD // reportée sans suite : à corriger comme une prise non faite
+            }
+            LigneAujourdhui(occurrence, m, p, etat)
+        }
+        val liees = lignesJournal.mapNotNull { it.planningHeureId }.toSet()
+        val recentes = occurrencesSansLigneRecentes(plannings, date, liees, maintenant).mapNotNull { occ ->
+            parId[occ.medicamentId]?.let { LigneAujourdhui(occ, it, null, etatOccurrence(occ, null, maintenant)) }
+        }
+        return EtatAujourdhui(
+            date, (duJournal + recentes).sortedBy { it.occurrence.heure },
+            // Les lignes détachées d'un planning (datePrevue connue) sont déjà dans les cartes : seules les vraies prises ponctuelles restent ici
+            ponctuelles.filter { it.datePrevue == null }.mapNotNull { p -> parId[p.medicamentId]?.let { PonctuelleAujourdhui(p, it) } },
+        )
+    }
+
     val aujourdhui: StateFlow<EtatAujourdhui?> = combine(
         db.medicaments().observerAvecStock(),
         db.plannings().observerTousLesActifs(),
@@ -165,18 +202,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun jour(date: LocalDate): Flow<EtatAujourdhui> = combine(
         db.medicaments().observerAvecStock(),
         db.plannings().observerTousLesActifs(),
-        db.prises().observerPlanifieesDuJour(date),
+        db.prises().observerPrevuesLe(date),
         db.prises().observerPonctuellesEntre(debutDuJour(date), debutDuJour(date.plusDays(1))),
         horloge,
-    ) { medicaments, plannings, planifiees, ponctuelles, maintenant ->
-        construireEtat(date, medicaments, plannings, planifiees, ponctuelles, maintenant)
+    ) { medicaments, plannings, journal, ponctuelles, maintenant ->
+        if (date.isBefore(maintenant.toLocalDate())) construireEtatPasse(date, medicaments, plannings, journal, ponctuelles, maintenant)
+        else construireEtat(date, medicaments, plannings, journal.filter { it.planningHeureId != null }, ponctuelles, maintenant)
     }
 
     /** Statut de chaque jour d'un mois pour le calendrier de l'onglet Historique. */
     fun mois(mois: YearMonth): Flow<Map<LocalDate, StatutJour>> = combine(
         db.medicaments().observerAvecStock(),
         db.plannings().observerTousLesActifs(),
-        db.prises().observerPlanifieesEntre(mois.atDay(1), mois.atEndOfMonth()),
+        db.prises().observerPrevuesEntre(mois.atDay(1), mois.atEndOfMonth()),
         jour.flatMapLatest { d -> db.prises().observerTraiteesDepuis(d) },
         horloge,
     ) { medicaments, plannings, prises, traitees, maintenant ->
@@ -184,7 +222,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         statutsDuMois(
             mois, maintenant,
             plannings.filter { it.planning.medicamentId in visibles },
-            prises,
+            prises.filter { it.medicamentId in visibles },
             medicaments.associate { it.medicament.id to it.stock },
             traitees.mapNotNull { p -> p.planningHeureId?.let { it to p.datePrevue!! } }.toSet(),
         )
@@ -197,8 +235,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun instantDe(o: Occurrence): Long =
         if (o.date.isBefore(LocalDate.now())) LocalDateTime.of(o.date, o.heure).atZone(zone).toInstant().toEpochMilli() else System.currentTimeMillis()
 
+    /** Ligne du journal d'un jour passé : on corrige sa décision sur place (elle ne disparaît jamais de l'historique). */
+    private fun estPassee(prise: Prise?) = prise?.datePrevue?.isBefore(LocalDate.now()) == true
+
     fun prendre(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
+        if (l.prise != null && estPassee(l.prise)) { repo.corrigerPrise(l.prise.id, StatutPrise.PRISE, instantDe(o)); recaler(); return@launch }
         repo.prendre(l.medicament.id, o.quantite, instantDe(o), o.planningHeure.id, o.date, o.heure)
         Notifications.annuler(getApplication(), o)
         recaler()
@@ -206,6 +248,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun sauter(l: LigneAujourdhui) = viewModelScope.launch {
         val o = l.occurrence
+        if (l.prise != null && estPassee(l.prise)) { repo.corrigerPrise(l.prise.id, StatutPrise.SAUTEE, instantDe(o)); recaler(); return@launch }
         repo.sauter(l.medicament.id, o.quantite, instantDe(o), o.planningHeure.id, o.date, o.heure)
         Notifications.annuler(getApplication(), o)
         recaler()
@@ -220,7 +263,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Annule la décision (prise, sautée, reportée) : l'occurrence redevient en attente et le stock est restitué. */
-    fun annuler(prise: Prise) = viewModelScope.launch { repo.annulerPrise(prise.id); recaler() }
+    fun annuler(prise: Prise) = viewModelScope.launch {
+        // Jour passé : la ligne redevient « manquée » (supprimer la ligne effacerait l'occurrence de l'historique)
+        if (estPassee(prise)) repo.corrigerPrise(prise.id, StatutPrise.MANQUEE, System.currentTimeMillis()) else repo.annulerPrise(prise.id)
+        recaler()
+    }
 
     fun priseHorsPlanning(m: Medicament, quantite: Double) = viewModelScope.launch {
         repo.prendre(m.id, quantite, System.currentTimeMillis())
@@ -284,12 +331,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- Plannings ---
     fun plannings(medicamentId: Long): Flow<List<PlanningAvecHeures>> = db.plannings().observerDuMedicament(medicamentId)
 
+    /**
+     * L'historique passé vit dans le journal : avant de modifier ou supprimer un planning, le moteur rattrape les occurrences échues
+     * (une ligne « manquée » pour chaque occurrence restée sans réponse), sinon elles disparaîtraient avec l'ancien rythme.
+     */
+    private suspend fun figerLePasse() = Moteur.executer(getApplication())
+
     fun enregistrerPlanning(planning: Planning, heures: List<PlanningHeure>) = viewModelScope.launch {
+        figerLePasse()
         repo.enregistrerPlanning(planning, heures)
         recaler()
     }
 
-    fun supprimerPlanning(planning: Planning) = viewModelScope.launch { db.plannings().supprimer(planning); recaler() }
+    fun supprimerPlanning(planning: Planning) = viewModelScope.launch { figerLePasse(); db.plannings().supprimer(planning); recaler() }
 
     // --- Recherche BDPM ---
     val resultats = MutableStateFlow<List<SpecialiteBdpm>>(emptyList())

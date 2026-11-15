@@ -80,12 +80,48 @@ class Repository(private val db: AppDatabase) {
         }
     }
 
-    /** Remplace les heures d'un planning (création ou modification) de façon atomique. */
+    /**
+     * Crée ou modifie un planning. Les heures inchangées gardent leur identifiant : une prise déjà notée aujourd'hui reste donc
+     * reliée à son heure ; une heure retirée détache ses prises (elles passent en « hors planning »).
+     * Le passé n'est pas concerné : l'historique se lit dans le journal des prises (voir CLAUDE.md), pas dans les plannings.
+     */
     suspend fun enregistrerPlanning(planning: Planning, heures: List<PlanningHeure>): Long = db.withTransaction {
-        val id = if (planning.id == 0L) db.plannings().inserer(planning)
-        else { db.plannings().modifier(planning); db.plannings().supprimerHeures(planning.id); planning.id }
-        db.plannings().insererHeures(heures.map { it.copy(id = 0, planningId = id) })
-        id
+        val anciennes = if (planning.id == 0L) null else db.plannings().parId(planning.id)?.heures
+        if (anciennes == null) {
+            val id = db.plannings().inserer(planning.copy(id = 0))
+            db.plannings().insererHeures(heures.map { it.copy(id = 0, planningId = id) })
+            return@withTransaction id
+        }
+        db.plannings().modifier(planning)
+        fusionnerHeures(anciennes, heures, planning.id)
+        planning.id
+    }
+
+    /** Aligne les heures d'un planning sur la nouvelle liste en gardant l'identifiant des heures inchangées. */
+    private suspend fun fusionnerHeures(anciennes: List<PlanningHeure>, nouvelles: List<PlanningHeure>, planningId: Long) {
+        val restantes = anciennes.toMutableList()
+        for (h in nouvelles) {
+            val i = restantes.indexOfFirst { it.heure == h.heure }
+            if (i >= 0) {
+                val o = restantes.removeAt(i)
+                if (o.quantite != h.quantite) db.plannings().modifierHeure(o.copy(quantite = h.quantite))
+            } else db.plannings().insererHeures(listOf(h.copy(id = 0, planningId = planningId)))
+        }
+        restantes.forEach { db.plannings().supprimerHeure(it.id) }
+    }
+
+    /**
+     * Corrige après coup la décision d'une ligne du journal (prise, sautée, manquée), sans jamais la supprimer : l'occurrence reste
+     * dans l'historique. Le stock suit (mouvement de prise créé ou retiré).
+     */
+    suspend fun corrigerPrise(priseId: Long, statut: StatutPrise, instant: Long) = db.withTransaction {
+        require(statut != StatutPrise.REPORTEE)
+        val p = db.prises().parId(priseId) ?: return@withTransaction
+        db.stock().supprimerDeLaPrise(priseId)
+        db.prises().modifier(p.copy(statut = statut, horodatage = instant, reporteJusqua = null))
+        if (statut == StatutPrise.PRISE) {
+            db.stock().inserer(StockMouvement(medicamentId = p.medicamentId, delta = -p.quantite, type = TypeMouvement.PRISE, horodatage = instant, priseId = priseId))
+        }
     }
 
     private suspend fun occurrence(planningHeureId: Long?, date: LocalDate?): Prise? =

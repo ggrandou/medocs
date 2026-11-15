@@ -50,6 +50,15 @@ interface PlanningDao {
     @Query("DELETE FROM planning_heure WHERE planningId = :planningId")
     suspend fun supprimerHeures(planningId: Long)
 
+    @Update suspend fun modifierHeure(h: PlanningHeure)
+
+    @Query("DELETE FROM planning_heure WHERE id = :id")
+    suspend fun supprimerHeure(id: Long)
+
+    @Transaction
+    @Query("SELECT * FROM planning WHERE id = :id")
+    suspend fun parId(id: Long): PlanningAvecHeures?
+
     @Transaction
     @Query("SELECT * FROM planning WHERE medicamentId = :medicamentId")
     fun observerDuMedicament(medicamentId: Long): Flow<List<PlanningAvecHeures>>
@@ -78,6 +87,9 @@ interface PriseDao {
     @Query("SELECT * FROM prise WHERE planningHeureId = :planningHeureId AND datePrevue = :date")
     suspend fun occurrence(planningHeureId: Long, date: LocalDate): Prise?
 
+    @Query("SELECT * FROM prise WHERE id = :id")
+    suspend fun parId(id: Long): Prise?
+
     @Query("SELECT * FROM prise ORDER BY id") suspend fun toutes(): List<Prise>
     @Insert suspend fun insererToutes(l: List<Prise>)
 
@@ -101,9 +113,16 @@ interface PriseDao {
     @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue = :date")
     fun observerPlanifieesDuJour(date: LocalDate): Flow<List<Prise>>
 
-    /** Occurrences planifiées d'un intervalle de dates [debut, fin] inclus (calendrier mensuel). */
-    @Query("SELECT * FROM prise WHERE planningHeureId IS NOT NULL AND datePrevue >= :debut AND datePrevue <= :fin")
-    fun observerPlanifieesEntre(debut: LocalDate, fin: LocalDate): Flow<List<Prise>>
+    /**
+     * Lignes du journal dont la date prévue tombe dans [debut, fin] inclus (calendrier mensuel), qu'elles soient encore reliées
+     * à un planning ou non : le passé se lit dans le journal, pas dans les plannings (qu'on peut modifier ou supprimer).
+     */
+    @Query("SELECT * FROM prise WHERE datePrevue >= :debut AND datePrevue <= :fin")
+    fun observerPrevuesEntre(debut: LocalDate, fin: LocalDate): Flow<List<Prise>>
+
+    /** Toutes les lignes d'un jour passé (reliées ou non à un planning), par heure prévue. */
+    @Query("SELECT * FROM prise WHERE datePrevue = :date ORDER BY heurePrevue")
+    fun observerPrevuesLe(date: LocalDate): Flow<List<Prise>>
 
     /** Occurrences manquées des derniers jours (strictement avant [avant]), pour les signaler à l'utilisateur. */
     @Query("SELECT * FROM prise WHERE statut = 'MANQUEE' AND datePrevue >= :depuis AND datePrevue < :avant ORDER BY datePrevue DESC, heurePrevue DESC")
