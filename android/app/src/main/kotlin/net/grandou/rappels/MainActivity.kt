@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val settings = Settings(this)
         val version = packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        val build = "$version (${BuildConfig.GIT_SHA})"
         setContent {
             var theme by remember { mutableStateOf(settings.theme) }
             val dark = isDark(theme)
@@ -29,7 +30,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
                 onDispose {}
             }
-            AppTheme(dark) { Root(version, theme) { theme = it; settings.theme = it } }
+            AppTheme(dark) { Root(build, theme) { theme = it; settings.theme = it } }
         }
     }
 }

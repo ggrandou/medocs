@@ -6,6 +6,12 @@ plugins {
     id("androidx.room")
 }
 
+// Short SHA-1 of the commit being built ("-dirty" if the working tree has changes); "unknown" outside a git checkout.
+fun git(vararg args: String): String? = try {
+    providers.exec { commandLine("git", *args); isIgnoreExitValue = true }.standardOutput.asText.get().trim().ifEmpty { null }
+} catch (e: Exception) { null }
+val gitSha: String = git("rev-parse", "--short=7", "HEAD")?.let { it + if (git("status", "--porcelain") != null) "-dirty" else "" } ?: "unknown"
+
 android {
     namespace = "net.grandou.rappels"
     compileSdk = 36
@@ -16,8 +22,12 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
