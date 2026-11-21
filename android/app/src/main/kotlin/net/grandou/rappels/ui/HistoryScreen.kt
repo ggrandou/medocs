@@ -364,7 +364,8 @@ private fun DayDetail(date: LocalDate, today: LocalDate, entries: List<TodayEntr
         SectionTitle(formatLongDay(date) + if (date == today) " (aujourd'hui)" else "", Modifier.padding(top = 8.dp))
         val sub = MaterialTheme.colorScheme.onSurfaceVariant
         if (entries.isEmpty()) {
-            Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium, color = sub)
+            Illustration(Drawing.FREE_DAY, 110.dp)
+            Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium, color = sub, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         } else {
             Text(daySummary(entries), style = MaterialTheme.typography.bodyMedium, color = sub)
             entries.forEach { DayRow(it, lacksStock(it, runOut)) }
@@ -451,7 +452,12 @@ private fun DayEditor(
             contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (entries.isEmpty() && extras.isEmpty()) item { Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium) }
+            if (entries.isEmpty() && extras.isEmpty()) item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Illustration(Drawing.FREE_DAY, 110.dp)
+                    Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             entrySections(entries, actions, allowPostpone = date == today, extras = extras)
             if (date <= today && lines.isNotEmpty()) {
                 item(key = "add-one-off") {

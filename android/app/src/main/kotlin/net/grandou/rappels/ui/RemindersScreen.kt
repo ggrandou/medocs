@@ -101,9 +101,7 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(96.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Icon(painterResource(R.drawable.ic_nav_reminders_active), contentDescription = null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-        }
+        Illustration(Drawing.EMPTY_BOX)
         Text("Rien à suivre pour l'instant", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
         Text(
             "Ajoutez ce dont vous voulez ne rien oublier : un rappel régulier, avec ou sans suivi de stock.",

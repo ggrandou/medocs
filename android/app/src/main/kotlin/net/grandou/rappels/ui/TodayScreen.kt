@@ -104,7 +104,7 @@ fun TodayScreen(
 
             if (state.lines.isEmpty()) {
                 item(key = "empty-all") {
-                    Empty("Rien à suivre pour l'instant", "Ajoutez un premier rappel dans l'onglet Rappels.", "Ajouter un rappel", onOpenReminders)
+                    Empty("Rien à suivre pour l'instant", "Ajoutez un premier rappel dans l'onglet Rappels.", Drawing.EMPTY_BOX, "Ajouter un rappel", onOpenReminders)
                 }
             } else if (entries.isEmpty() && state.todayExtras.isEmpty()) {
                 item(key = "empty-today") {
@@ -112,8 +112,13 @@ fun TodayScreen(
                     Empty(
                         "Rien de prévu aujourd'hui",
                         next?.let { "Prochain rappel : ${relativeDay(it.date, today)} à ${formatTime(it.time)}." } ?: "Aucun rappel à venir.",
+                        Drawing.FREE_DAY,
                     )
                 }
+            }
+
+            else if (entries.isNotEmpty() && entries.all { it.state == EntryState.DONE || it.state == EntryState.SKIPPED }) {
+                item(key = "all-done") { Illustration(Drawing.ALL_DONE, 120.dp) }
             }
 
             entrySections(entries, actions, extras = state.todayExtras)
@@ -165,8 +170,9 @@ private fun AttentionCard(lines: List<ItemLine>, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Empty(title: String, detail: String, action: String? = null, onAction: () -> Unit = {}) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun Empty(title: String, detail: String, drawing: Drawing, action: String? = null, onAction: () -> Unit = {}) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Illustration(drawing)
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (action != null) Button(onClick = onAction, Modifier.padding(top = 8.dp)) { Text(action) }

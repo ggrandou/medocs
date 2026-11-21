@@ -48,6 +48,7 @@ fun MoreScreen(theme: ThemeMode, persistent: Boolean, onPersistent: (Boolean) ->
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Illustration(Drawing.APP_ICON, 110.dp)
             SectionTitle("Mes données")
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Entry(R.drawable.ic_more_backup, "Sauvegarder", "Enregistrer un fichier chiffré", onBackup)
