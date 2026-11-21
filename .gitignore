@@ -1,0 +1,33 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+captures/
+!play/visuels/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Downloaded BDPM data and generated database (reproducible by script)
+data/raw/
+data/build/
+*.sqlite
+*.sqlite-journal
+
+# Python (database build script)
+__pycache__/
+*.pyc
+.venv/
+keystore.properties
