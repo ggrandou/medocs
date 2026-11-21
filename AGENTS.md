@@ -43,6 +43,7 @@ android/                  Gradle project (app module), gradlew wrapper
   app/src/main/kotlin/net/grandou/rappels/   code (MainActivity, Settings, ui/)
   app/src/main/res/                          icons, themes, strings
   app/src/test/                              JVM tests (PaletteTest)
+docs/schema.md            user database schema (tables, recurrence types); keep it in sync with the Room entities
 scripts/install-deps.sh   installs JDK 21 and the Android SDK without Android Studio
 README.md                 description and build commands
 ```
@@ -143,7 +144,7 @@ The whole drawing is **scaled to 85 %** around the center to fit inside Android'
 - The exact-alarm permission is denied by default since Android 14 and is **reset on every reinstall**. `setAlarmClock` needs the same permission (it is not a permission-free fallback); without it, fall back to `setAndAllowWhileIdle` (inexact). `USE_EXACT_ALARM` is reserved by Google Play for alarm clock and calendar apps.
 - Test every new API call on an old device: `canScheduleExactAlarms` (Android 12+) and the `POST_NOTIFICATIONS` check (Android 13+) crashed API 28.
 - `connectedDebugAndroidTest` **uninstalls the app** at the end (losing permissions and the phone's data) and must be run with `ANDROID_SERIAL` on a dedicated test device.
-- Any modified Room entity requires bumping the database version and writing a migration; exported schemas are versioned.
+- Any modified Room entity requires bumping the database version and writing a migration; exported schemas are versioned, and `docs/schema.md` must be updated.
 
 ## Distribution
 
