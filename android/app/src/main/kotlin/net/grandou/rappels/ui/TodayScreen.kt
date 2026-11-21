@@ -75,10 +75,6 @@ fun TodayScreen(
             return@Scaffold
         }
         val entries = state.today
-        val due = entries.filter { it.state == EntryState.DUE }
-        val missed = entries.filter { it.state == EntryState.MISSED }
-        val ahead = entries.filter { it.state == EntryState.UPCOMING || it.state == EntryState.SNOOZED }
-        val settled = entries.filter { it.state == EntryState.DONE || it.state == EntryState.SKIPPED }
         val attention = state.lines.filter { it.needsAttention }
         val today = LocalDate.now()
 
@@ -104,26 +100,8 @@ fun TodayScreen(
                 }
             }
 
-            section("À faire", due, onDone, onSkip, onPostpone, onUndo)
-            section("Manqués", missed, onDone, onSkip, onPostpone, onUndo)
-            section("À venir", ahead, onDone, onSkip, onPostpone, onUndo)
-            section("Terminé", settled, onDone, onSkip, onPostpone, onUndo)
+            entrySections(entries, EntryActions(onDone, onSkip, onPostpone, onUndo))
         }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.section(
-    title: String,
-    list: List<TodayEntry>,
-    onDone: (TodayEntry) -> Unit,
-    onSkip: (TodayEntry) -> Unit,
-    onPostpone: (TodayEntry) -> Unit,
-    onUndo: (TodayEntry) -> Unit,
-) {
-    if (list.isEmpty()) return
-    item(key = "h-$title") { SectionTitle(title, Modifier.padding(top = 8.dp)) }
-    items(list, key = { it.key }) { e ->
-        EntryCard(e, Modifier.animateItem(), { onDone(e) }, { onSkip(e) }, { onPostpone(e) }, { onUndo(e) })
     }
 }
 
@@ -176,68 +154,5 @@ private fun Empty(title: String, detail: String, action: String? = null, onActio
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (action != null) Button(onClick = onAction, Modifier.padding(top = 8.dp)) { Text(action) }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun EntryCard(e: TodayEntry, modifier: Modifier, onDone: () -> Unit, onSkip: () -> Unit, onPostpone: () -> Unit, onUndo: () -> Unit) {
-    val c = MaterialTheme.colorScheme
-    val tone = entryTone(e.state)
-    val sub = if (e.state == EntryState.UPCOMING) c.onSurfaceVariant else tone.content
-    val name = e.item.name
-    val what = "$name, ${formatTime(e.planned.time)}"
-    Card(
-        modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = tone.container, contentColor = tone.content),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Time, name, quantity and status read as one sentence for TalkBack; the buttons stay separate.
-            Row(Modifier.semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(e.planned.time), Modifier.width(56.dp), style = MaterialTheme.typography.titleMedium, color = tone.content)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    e.planned.quantity?.let { Text(formatWithUnit(it, e.item.unit), style = MaterialTheme.typography.bodyMedium, color = sub) }
-                    StateLine(e, tone.content, Modifier.padding(top = 2.dp))
-                }
-            }
-            // Same style for every action: a filled "Done" would read as an already validated state.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (e.actionable) {
-                    ActionButton("Fait", R.drawable.ic_check, "Fait : $what", onDone)
-                    if (e.state == EntryState.DUE || e.state == EntryState.MISSED) {
-                        ActionButton("Reporter", R.drawable.ic_schedule, "Reporter de $SNOOZE_MINUTES minutes : $what", onPostpone)
-                    }
-                    ActionButton("Ignorer", R.drawable.ic_skip, "Ignorer : $what", onSkip)
-                } else {
-                    ActionButton("Annuler", R.drawable.ic_undo, "Annuler : $what", onUndo)
-                }
-            }
-        }
-    }
-}
-
-/** Icon + verb, tonal. Never wraps: a button narrower than its text would clip it, so the row wraps instead. */
-@Composable
-private fun ActionButton(label: String, @DrawableRes icon: Int, description: String, onClick: () -> Unit) {
-    FilledTonalButton(onClick, Modifier.semantics { contentDescription = description }, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
-        Icon(painterResource(icon), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-        Text(label, maxLines = 1, softWrap = false)
-    }
-}
-
-/** What happened, in words and with an icon, in the card's text color. */
-@Composable
-private fun StateLine(e: TodayEntry, color: Color, modifier: Modifier = Modifier) {
-    val zone = ZoneId.systemDefault()
-    fun at(ms: Long?) = ms?.let { formatTime(Instant.ofEpochMilli(it).atZone(zone).toLocalTime()) }
-    when (e.state) {
-        EntryState.UPCOMING -> Unit
-        EntryState.DUE -> StatusLine("En retard", R.drawable.ic_warning, color, modifier)
-        EntryState.SNOOZED -> StatusLine("Reporté à ${at(e.row?.snoozedUntil)}", R.drawable.ic_schedule, color, modifier)
-        EntryState.DONE -> StatusLine("Fait" + (at(e.row?.timestamp)?.let { " à $it" } ?: ""), R.drawable.ic_check, color, modifier)
-        EntryState.SKIPPED -> StatusLine("Ignoré", R.drawable.ic_skip, color, modifier)
-        EntryState.MISSED -> StatusLine("Manqué", R.drawable.ic_warning, color, modifier)
     }
 }

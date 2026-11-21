@@ -64,4 +64,33 @@ class TodayModelTest {
     @Test fun unknownOrArchivedItemIsIgnored() {
         assertTrue(buildToday(emptyList(), listOf(schedule), emptyList(), at("07:00"), ZoneOffset.UTC).isEmpty())
     }
+
+    private fun dayStates(day: String, now: String, vararg rows: Occurrence) =
+        buildDay(listOf(item), listOf(schedule), rows.toList(), LocalDate.parse(day), at(now), ZoneOffset.UTC).map { it.state }
+
+    @Test fun pastDayUnansweredIsMissed() {
+        val past = row(10, Status.DONE).copy(scheduledDate = LocalDate.parse("2026-03-09"))
+        assertEquals(listOf(EntryState.DONE, EntryState.MISSED), dayStates("2026-03-09", "07:00", past))
+        val snoozed = row(11, Status.SNOOZED, 0).copy(scheduledDate = LocalDate.parse("2026-03-09"))
+        assertEquals(listOf(EntryState.MISSED, EntryState.MISSED), dayStates("2026-03-09", "07:00", snoozed))
+    }
+
+    @Test fun futureDayIsUpcoming() {
+        assertEquals(listOf(EntryState.UPCOMING, EntryState.UPCOMING), dayStates("2026-03-11", "23:00"))
+    }
+
+    @Test fun daySummaryCountsStates() {
+        val list = buildDay(listOf(item), listOf(schedule), listOf(row(10, Status.DONE)), date, at("21:00"), ZoneOffset.UTC)
+        assertEquals("2 rappels : 1 fait, 1 en retard", daySummary(list))
+        assertEquals("", daySummary(emptyList()))
+    }
+
+    @Test fun lacksStockFromTheRunOutDayOn() {
+        val e = buildDay(listOf(item), listOf(schedule), emptyList(), LocalDate.parse("2026-03-12"), at("07:00"), ZoneOffset.UTC)
+        assertTrue(lacksStock(e[0], mapOf(1L to LocalDate.parse("2026-03-12"))))
+        assertTrue(!lacksStock(e[0], mapOf(1L to LocalDate.parse("2026-03-13"))))
+        assertTrue(!lacksStock(e[0], emptyMap()))
+        val past = buildDay(listOf(item), listOf(schedule), emptyList(), LocalDate.parse("2026-03-09"), at("07:00"), ZoneOffset.UTC)
+        assertTrue(!lacksStock(past[0], mapOf(1L to LocalDate.parse("2026-03-01"))))
+    }
 }

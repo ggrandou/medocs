@@ -6,6 +6,7 @@ import net.grandou.rappels.data.ScheduleWithTimes
 import net.grandou.rappels.data.Status
 import net.grandou.rappels.engine.PlannedOccurrence
 import net.grandou.rappels.engine.RecurrenceEngine
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -49,20 +50,40 @@ fun buildToday(
     rows: List<Occurrence>,
     now: LocalDateTime,
     zone: ZoneId = ZoneId.systemDefault(),
+): List<TodayEntry> = buildDay(items, schedules, rows, now.toLocalDate(), now, zone)
+
+/**
+ * Planned occurrences of any [date], with their state at [now]. Same rules as today for the current day;
+ * on a past day, whatever was not answered counts as missed (the alarm engine writes the row later, or never
+ * for old days); on a future day, nothing is late. [rows] are the journal rows of that day.
+ */
+fun buildDay(
+    items: List<Item>,
+    schedules: List<ScheduleWithTimes>,
+    rows: List<Occurrence>,
+    date: LocalDate,
+    now: LocalDateTime,
+    zone: ZoneId = ZoneId.systemDefault(),
 ): List<TodayEntry> {
     val byId = items.associateBy { it.id }
     val rowByKey = rows.filter { it.scheduleTimeId != null && it.scheduledDate != null }
         .associateBy { it.scheduleTimeId!! to it.scheduledDate!! }
     val nowMillis = now.atZone(zone).toInstant().toEpochMilli()
-    return RecurrenceEngine.occurrencesOn(schedules, now.toLocalDate()).mapNotNull { planned ->
+    val past = date < now.toLocalDate()
+    return RecurrenceEngine.occurrencesOn(schedules, date).mapNotNull { planned ->
         val item = byId[planned.itemId] ?: return@mapNotNull null
         val row = rowByKey[planned.scheduleTimeId to planned.date]
         val state = when (row?.status) {
             Status.DONE -> EntryState.DONE
             Status.SKIPPED -> EntryState.SKIPPED
             Status.MISSED -> EntryState.MISSED
-            Status.SNOOZED -> if ((row.snoozedUntil ?: 0L) <= nowMillis) EntryState.DUE else EntryState.SNOOZED
+            Status.SNOOZED -> when {
+                past -> EntryState.MISSED
+                (row.snoozedUntil ?: 0L) <= nowMillis -> EntryState.DUE
+                else -> EntryState.SNOOZED
+            }
             null -> when {
+                past -> EntryState.MISSED
                 planned.dateTime > now -> EntryState.UPCOMING
                 else -> EntryState.DUE
             }

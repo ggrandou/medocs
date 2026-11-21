@@ -66,7 +66,10 @@ fun Root(
                         onDone = vm::markDone, onSkip = vm::skip, onPostpone = vm::postpone, onUndo = vm::undo,
                         onOpenReminders = { tab = AppTab.REMINDERS },
                     )
-                    AppTab.HISTORY -> EmptyTab("Historique")
+                    AppTab.HISTORY -> HistoryScreen(
+                        state, vm::rowsBetween,
+                        EntryActions(vm::markDone, vm::skip, vm::postpone, vm::undo),
+                    )
                     AppTab.REMINDERS -> RemindersScreen(lines, { route = "item/0" }, { route = "detail/${it.item.id}" })
                     AppTab.MORE -> MoreScreen(
                         theme, persistent, onPersistent,

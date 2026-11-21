@@ -26,6 +26,7 @@ import net.grandou.rappels.data.ScheduleTime
 import net.grandou.rappels.data.ScheduleWithTimes
 import net.grandou.rappels.data.Status
 import net.grandou.rappels.reminders.ReminderEngine
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /** What the screens observe: tracked items (see [ItemLine]) and today's planned occurrences. */
@@ -106,6 +107,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setScheduleActive(sw: ScheduleWithTimes, active: Boolean) {
         write { repo.saveSchedule(sw.schedule.copy(active = active), sw.times) }
     }
+
+    /** Journal rows of the planned occurrences of a day range ("Historique"). */
+    fun rowsBetween(from: LocalDate, to: LocalDate) = repo.occurrencesBetween(from, to)
 
     // --- Today's answers ---
 
