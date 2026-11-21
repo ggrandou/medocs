@@ -91,3 +91,18 @@ fun buildDay(
         TodayEntry(planned, item, row, state)
     }
 }
+
+/** A one-off ("extra") intake: outside any schedule, always done. */
+data class OneOffEntry(val row: Occurrence, val item: Item) {
+    val key: String get() = "extra-${row.id}"
+}
+
+/** Pairs one-off rows with their items (rows of unknown items are dropped), in time order. */
+fun buildOneOffs(items: List<Item>, rows: List<Occurrence>): List<OneOffEntry> {
+    val byId = items.associateBy { it.id }
+    return rows.sortedBy { it.timestamp }.mapNotNull { r -> byId[r.itemId]?.let { OneOffEntry(r, it) } }
+}
+
+/** Epoch-ms bounds [start, end) of a local day. */
+fun dayBounds(date: LocalDate, zone: ZoneId = ZoneId.systemDefault()): Pair<Long, Long> =
+    date.atStartOfDay(zone).toInstant().toEpochMilli() to date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()

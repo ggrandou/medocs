@@ -56,6 +56,8 @@ class EntryActions(
     val onSkip: (TodayEntry) -> Unit,
     val onPostpone: (TodayEntry) -> Unit,
     val onUndo: (TodayEntry) -> Unit,
+    val onCancelOneOff: (OneOffEntry) -> Unit,
+    val onAddOneOff: (itemId: Long, quantity: Double, at: Long) -> Unit,
 )
 
 /** The usual grouping of a day's entries: to do, missed, ahead, settled. */
@@ -63,11 +65,13 @@ fun androidx.compose.foundation.lazy.LazyListScope.entrySections(
     entries: List<TodayEntry>,
     actions: EntryActions,
     allowPostpone: Boolean = true,
+    extras: List<OneOffEntry> = emptyList(),
 ) {
     entrySection("À faire", entries.filter { it.state == EntryState.DUE }, actions, allowPostpone)
     entrySection("Manqués", entries.filter { it.state == EntryState.MISSED }, actions, allowPostpone)
     entrySection("À venir", entries.filter { it.state == EntryState.UPCOMING || it.state == EntryState.SNOOZED }, actions, allowPostpone)
     entrySection("Terminé", entries.filter { it.state == EntryState.DONE || it.state == EntryState.SKIPPED }, actions, allowPostpone)
+    oneOffSection(extras, actions.onCancelOneOff)
 }
 
 /** A titled group of entry cards in a lazy list. */
@@ -122,7 +126,7 @@ fun EntryCard(e: TodayEntry, modifier: Modifier, a: EntryActions, allowPostpone:
 
 /** Icon + verb, tonal. Never wraps: a button narrower than its text would clip it, so the row wraps instead. */
 @Composable
-private fun ActionButton(label: String, @DrawableRes icon: Int, description: String, onClick: () -> Unit) {
+fun ActionButton(label: String, @DrawableRes icon: Int, description: String, onClick: () -> Unit) {
     FilledTonalButton(onClick, Modifier.semantics { contentDescription = description }, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
         Icon(painterResource(icon), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.size(ButtonDefaults.IconSpacing))

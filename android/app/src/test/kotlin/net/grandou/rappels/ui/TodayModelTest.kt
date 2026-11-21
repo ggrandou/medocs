@@ -93,4 +93,17 @@ class TodayModelTest {
         val past = buildDay(listOf(item), listOf(schedule), emptyList(), LocalDate.parse("2026-03-09"), at("07:00"), ZoneOffset.UTC)
         assertTrue(!lacksStock(past[0], mapOf(1L to LocalDate.parse("2026-03-01"))))
     }
+
+    @Test fun oneOffsAreOrderedAndLinkedToTheirItem() {
+        fun extra(id: Long, itemId: Long, ts: Long) = Occurrence(id = id, itemId = itemId, status = Status.DONE, timestamp = ts)
+        val list = buildOneOffs(listOf(item), listOf(extra(2, 1, 200), extra(1, 1, 100), extra(3, 99, 150)))
+        assertEquals(listOf(1L, 2L), list.map { it.row.id })
+    }
+
+    @Test fun parseTimeAcceptsCommonForms() {
+        assertEquals(LocalTime.of(8, 30), parseTime("8:30"))
+        assertEquals(LocalTime.of(8, 30), parseTime(" 08h30 "))
+        assertEquals(null, parseTime("24:00"))
+        assertEquals(null, parseTime("8"))
+    }
 }

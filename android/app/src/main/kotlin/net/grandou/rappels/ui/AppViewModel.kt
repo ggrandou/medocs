@@ -30,7 +30,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /** What the screens observe: tracked items (see [ItemLine]) and today's planned occurrences. */
-data class AppState(val lines: List<ItemLine>, val today: List<TodayEntry>)
+data class AppState(val lines: List<ItemLine>, val today: List<TodayEntry>, val todayExtras: List<OneOffEntry>)
 
 private val ANSWERED = setOf(Status.DONE, Status.SKIPPED, Status.MISSED)
 
@@ -52,9 +52,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     @OptIn(ExperimentalCoroutinesApi::class)
     private val todayRows = today.flatMapLatest { repo.occurrencesOfDay(it) }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val todayExtraRows = today.flatMapLatest { d -> dayBounds(d).let { (a, b) -> repo.oneOffsBetween(a, b) } }
+
     /** Everything the screens show (null while loading), recomputed on any change and every minute. */
     val state: StateFlow<AppState?> =
-        combine(repo.itemsWithStock(), repo.observeSchedules(), todayRows, clock) { items, schedules, rows, now ->
+        combine(repo.itemsWithStock(), repo.observeSchedules(), todayRows, todayExtraRows, clock) { items, schedules, rows, extraRows, now ->
             val handled = rows
                 .filter { it.status in ANSWERED && it.scheduleTimeId != null && it.scheduledDate != null }
                 .map { it.scheduleTimeId!! to it.scheduledDate!! }.toSet()
@@ -63,6 +66,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 lines = items.map { buildLine(it, schedules, now, handled) }
                     .sortedWith(compareByDescending<ItemLine> { it.needsAttention }),
                 today = buildToday(items.map { it.item }, schedules, rows, now),
+                todayExtras = buildOneOffs(items.map { it.item }, extraRows),
             )
         }
             .flowOn(Dispatchers.Default)
@@ -110,6 +114,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Journal rows of the planned occurrences of a day range ("Historique"). */
     fun rowsBetween(from: LocalDate, to: LocalDate) = repo.occurrencesBetween(from, to)
+
+    /** One-off intakes taken in a day range ("Historique"). */
+    fun oneOffsBetween(from: LocalDate, to: LocalDate) =
+        repo.oneOffsBetween(dayBounds(from).first, dayBounds(to).second)
+
+    /** Records an intake outside any schedule, taken at [at] (epoch ms). */
+    fun addOneOff(itemId: Long, quantity: Double, at: Long) {
+        write { repo.recordOneOff(itemId, quantity, at = at) }
+    }
+
+    fun cancelOneOff(e: OneOffEntry) {
+        write { repo.cancelOccurrence(e.row.id) }
+    }
 
     // --- Today's answers ---
 

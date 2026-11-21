@@ -106,6 +106,10 @@ interface OccurrenceDao {
     @Query("SELECT * FROM occurrence WHERE schedule_time_id IS NOT NULL AND scheduled_date = :date")
     fun observeScheduledOn(date: LocalDate): Flow<List<Occurrence>>
 
+    /** One-off ("extra") occurrences taken in [fromMs, toMs): no schedule, no planned day. */
+    @Query("SELECT * FROM occurrence WHERE schedule_time_id IS NULL AND scheduled_date IS NULL AND timestamp >= :fromMs AND timestamp < :toMs ORDER BY timestamp")
+    fun observeOneOffs(fromMs: Long, toMs: Long): Flow<List<Occurrence>>
+
     /** Journal of a month (calendar): the past is read here, not in the schedules. */
     @Query("SELECT * FROM occurrence WHERE scheduled_date >= :rangeStart AND scheduled_date <= :rangeEnd")
     fun observeBetween(rangeStart: LocalDate, rangeEnd: LocalDate): Flow<List<Occurrence>>

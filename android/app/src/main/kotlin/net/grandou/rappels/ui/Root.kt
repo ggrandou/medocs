@@ -42,6 +42,7 @@ fun Root(
     val backupVm: BackupViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val lines = state?.lines
+    val actions = EntryActions(vm::markDone, vm::skip, vm::postpone, vm::undo, vm::cancelOneOff, vm::addOneOff)
 
     BackHandler(enabled = subPage != null) { subPage = null }
     BackHandler(enabled = subPage == null && route.isNotEmpty()) { route = backOf(route) }
@@ -62,13 +63,11 @@ fun Root(
             androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
                 when (tab) {
                     AppTab.TODAY -> TodayScreen(
-                        state,
-                        onDone = vm::markDone, onSkip = vm::skip, onPostpone = vm::postpone, onUndo = vm::undo,
+                        state, actions,
                         onOpenReminders = { tab = AppTab.REMINDERS },
                     )
                     AppTab.HISTORY -> HistoryScreen(
-                        state, vm::rowsBetween,
-                        EntryActions(vm::markDone, vm::skip, vm::postpone, vm::undo),
+                        state, vm::rowsBetween, vm::oneOffsBetween, actions,
                     )
                     AppTab.REMINDERS -> RemindersScreen(lines, { route = "item/0" }, { route = "detail/${it.item.id}" })
                     AppTab.MORE -> MoreScreen(

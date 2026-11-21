@@ -24,7 +24,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -58,17 +63,27 @@ import java.time.ZoneId
 @Composable
 fun TodayScreen(
     state: AppState?,
-    onDone: (TodayEntry) -> Unit,
-    onSkip: (TodayEntry) -> Unit,
-    onPostpone: (TodayEntry) -> Unit,
-    onUndo: (TodayEntry) -> Unit,
+    actions: EntryActions,
     onOpenReminders: () -> Unit,
 ) {
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var adding by rememberSaveable { mutableStateOf(false) }
+    if (adding && state != null) {
+        OneOffDialog(state.lines, LocalDate.now(), { id, q, at -> actions.onAddOneOff(id, q, at); adding = false }) { adding = false }
+    }
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { LargeTopAppBar(title = { Text("Aujourd'hui") }, scrollBehavior = scroll) },
+        floatingActionButton = {
+            if (state?.lines?.isNotEmpty() == true) {
+                ExtendedFloatingActionButton(
+                    onClick = { adding = true },
+                    icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                    text = { Text("Prise ponctuelle") },
+                )
+            }
+        },
     ) { padding ->
         if (state == null) {
             Box(Modifier.fillMaxSize().padding(padding))
@@ -80,7 +95,8 @@ fun TodayScreen(
 
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 24.dp),
+            // Room under the last card for the floating button.
+            contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 96.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "summary") { Summary(entries, today) }
@@ -90,7 +106,7 @@ fun TodayScreen(
                 item(key = "empty-all") {
                     Empty("Rien à suivre pour l'instant", "Ajoutez un premier rappel dans l'onglet Rappels.", "Ajouter un rappel", onOpenReminders)
                 }
-            } else if (entries.isEmpty()) {
+            } else if (entries.isEmpty() && state.todayExtras.isEmpty()) {
                 item(key = "empty-today") {
                     val next = state.lines.mapNotNull { it.next }.minByOrNull { it.dateTime }
                     Empty(
@@ -100,7 +116,7 @@ fun TodayScreen(
                 }
             }
 
-            entrySections(entries, EntryActions(onDone, onSkip, onPostpone, onUndo))
+            entrySections(entries, actions, extras = state.todayExtras)
         }
     }
 }

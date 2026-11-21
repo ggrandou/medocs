@@ -109,10 +109,12 @@ class Repository(
         true
     }
 
-    /** One-off occurrence, outside any schedule (an "extra" intake). */
-    suspend fun recordOneOff(itemId: Long, quantity: Double?, status: Status = Status.DONE): Long =
+    fun oneOffsBetween(fromMs: Long, toMs: Long) = occurrences.observeOneOffs(fromMs, toMs)
+
+    /** One-off occurrence, outside any schedule (an "extra" intake), taken at [at] (epoch ms, default now). */
+    suspend fun recordOneOff(itemId: Long, quantity: Double?, status: Status = Status.DONE, at: Long? = null): Long =
         db.withTransaction {
-            val t = now()
+            val t = at ?: now()
             val occ = Occurrence(
                 itemId = itemId, status = status, quantity = quantity, timestamp = t,
             )

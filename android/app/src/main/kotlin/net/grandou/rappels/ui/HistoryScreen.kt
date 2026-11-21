@@ -69,6 +69,8 @@ import kotlinx.coroutines.flow.Flow
 import net.grandou.rappels.R
 import net.grandou.rappels.data.Occurrence
 import java.time.DayOfWeek
+import java.time.Instant
+import java.time.ZoneId
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -113,6 +115,7 @@ fun lacksStock(e: TodayEntry, runOut: Map<Long, LocalDate>): Boolean {
 fun HistoryScreen(
     state: AppState?,
     rowsBetween: (LocalDate, LocalDate) -> Flow<List<Occurrence>>,
+    oneOffsBetween: (LocalDate, LocalDate) -> Flow<List<Occurrence>>,
     actions: EntryActions,
 ) {
     val today = LocalDate.now()
@@ -124,6 +127,15 @@ fun HistoryScreen(
 
     val rows by remember(month) { rowsBetween(month.atDay(1), month.atEndOfMonth()) }
         .collectAsStateWithLifecycle(emptyList())
+    val extraRows by remember(month) { oneOffsBetween(month.atDay(1), month.atEndOfMonth()) }
+        .collectAsStateWithLifecycle(emptyList())
+    val extrasByDate: Map<LocalDate, List<OneOffEntry>> = remember(state, extraRows) {
+        val zone = ZoneId.systemDefault()
+        if (state == null) emptyMap()
+        else buildOneOffs(state.lines.map { it.item }, extraRows)
+            .groupBy { Instant.ofEpochMilli(it.row.timestamp).atZone(zone).toLocalDate() }
+    }
+    val extras = extrasByDate[selected].orEmpty()
     val days: Map<LocalDate, List<TodayEntry>> = remember(state, rows, month) {
         if (state == null) emptyMap() else {
             val items = state.lines.map { it.item }
@@ -151,7 +163,7 @@ fun HistoryScreen(
 
     BackHandler(enabled = editing) { editing = false }
     if (editing) {
-        DayEditor(selected, entries, today, actions) { editing = false }
+        DayEditor(selected, entries, extras, state?.lines.orEmpty(), today, actions) { editing = false }
         return
     }
 
@@ -191,13 +203,13 @@ fun HistoryScreen(
                             onNext = { showMonth(month.plusMonths(1)) },
                             onToday = { monthText = YearMonth.from(today).toString(); selectedText = today.toString() },
                         )
-                        MonthGrid(month, today, selected, days, runOut) { selectedText = it.toString() }
+                        MonthGrid(month, today, selected, days, extrasByDate, runOut) { selectedText = it.toString() }
                         Legend()
                     }
                 }
             }
             item(key = "day") {
-                DayDetail(selected, today, entries, runOut, onEdit = { editing = true })
+                DayDetail(selected, today, entries, extras, runOut, onEdit = { editing = true })
             }
         }
     }
@@ -228,6 +240,7 @@ private fun MonthGrid(
     today: LocalDate,
     selected: LocalDate,
     days: Map<LocalDate, List<TodayEntry>>,
+    extrasByDate: Map<LocalDate, List<OneOffEntry>>,
     runOut: Map<Long, LocalDate>,
     onSelect: (LocalDate) -> Unit,
 ) {
@@ -250,7 +263,7 @@ private fun MonthGrid(
                         if (n in 1..month.lengthOfMonth()) {
                             val date = month.atDay(n)
                             val entries = days[date].orEmpty()
-                            DayCell(date, today, date == selected, entries, entries.any { lacksStock(it, runOut) }) { onSelect(date) }
+                            DayCell(date, today, date == selected, entries, extrasByDate[date].orEmpty().size, entries.any { lacksStock(it, runOut) }) { onSelect(date) }
                         }
                     }
                 }
@@ -261,11 +274,13 @@ private fun MonthGrid(
 
 /** A ring split in equal slices (one per reminder of the day), the day number inside. */
 @Composable
-private fun DayCell(date: LocalDate, today: LocalDate, selected: Boolean, entries: List<TodayEntry>, lacking: Boolean, onClick: () -> Unit) {
+private fun DayCell(date: LocalDate, today: LocalDate, selected: Boolean, entries: List<TodayEntry>, extraCount: Int, lacking: Boolean, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme
-    val tones = entries.map { sliceColor(it.state) }
+    // One slice per planned reminder, then one per one-off intake (blue, the structure color).
+    val tones = entries.map { sliceColor(it.state) } + List(extraCount) { c.primary }
     val label = "${date.format(SHORT_DAY_FORMAT)}" + (if (date == today) ", aujourd'hui" else "") +
         (daySummary(entries).takeIf { it.isNotEmpty() }?.let { ", $it" } ?: ", aucun rappel") +
+        (if (extraCount > 0) ", $extraCount ${if (extraCount > 1) "prises ponctuelles" else "prise ponctuelle"}" else "") +
         (if (lacking) ", stock insuffisant" else "")
     // Outer ring = today; filled disc = selected day; the slices sit inside. Each is readable alone and together.
     Box(
@@ -275,10 +290,7 @@ private fun DayCell(date: LocalDate, today: LocalDate, selected: Boolean, entrie
             .semantics { contentDescription = label; role = Role.Button; this.selected = selected },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape).background(if (selected) c.primary else Color.Transparent),
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             if (tones.isNotEmpty()) {
                 Canvas(Modifier.size(40.dp)) {
                     val w = 4.dp.toPx()
@@ -293,12 +305,18 @@ private fun DayCell(date: LocalDate, today: LocalDate, selected: Boolean, entrie
                     }
                 }
             }
-            Text(
-                date.dayOfMonth.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (date == today || selected) FontWeight.ExtraBold else FontWeight.Normal,
-                color = if (selected) c.onPrimary else if (date == today) c.primary else c.onSurface,
-            )
+            // Selected disc sits inside the ring, so the slices keep their own colors (even blue ones).
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(if (selected) c.primary else Color.Transparent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (date == today || selected) FontWeight.ExtraBold else FontWeight.Normal,
+                    color = if (selected) c.onPrimary else if (date == today) c.primary else c.onSurface,
+                )
+            }
         }
     }
 }
@@ -320,10 +338,10 @@ private fun Legend() {
     ) {
         listOf(
             "Fait" to EntryState.DONE, "En retard" to EntryState.DUE, "Reporté" to EntryState.SNOOZED,
-            "Ignoré ou manqué" to EntryState.MISSED, "À venir" to EntryState.UPCOMING,
+            "Ignoré ou manqué" to EntryState.MISSED, "À venir" to EntryState.UPCOMING, "Prise ponctuelle" to null,
         ).forEach { (text, state) ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(12.dp).clip(CircleShape).background(sliceColor(state)))
+                Box(Modifier.size(12.dp).clip(CircleShape).background(if (state == null) c.primary else sliceColor(state)))
                 Text(text, style = MaterialTheme.typography.labelMedium, color = c.onSurfaceVariant)
             }
         }
@@ -341,19 +359,48 @@ private fun Legend() {
 }
 
 @Composable
-private fun DayDetail(date: LocalDate, today: LocalDate, entries: List<TodayEntry>, runOut: Map<Long, LocalDate>, onEdit: () -> Unit) {
+private fun DayDetail(date: LocalDate, today: LocalDate, entries: List<TodayEntry>, extras: List<OneOffEntry>, runOut: Map<Long, LocalDate>, onEdit: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle(formatLongDay(date) + if (date == today) " (aujourd'hui)" else "", Modifier.padding(top = 8.dp))
+        val sub = MaterialTheme.colorScheme.onSurfaceVariant
         if (entries.isEmpty()) {
-            Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            return@Column
+            Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium, color = sub)
+        } else {
+            Text(daySummary(entries), style = MaterialTheme.typography.bodyMedium, color = sub)
+            entries.forEach { DayRow(it, lacksStock(it, runOut)) }
         }
-        Text(daySummary(entries), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        entries.forEach { DayRow(it, lacksStock(it, runOut)) }
-        FilledTonalButton(onEdit, Modifier.padding(top = 4.dp), contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+        if (extras.isNotEmpty()) {
+            Text(
+                "${extras.size} ${if (extras.size > 1) "prises ponctuelles" else "prise ponctuelle"}",
+                Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium, color = sub,
+            )
+            extras.forEach { OneOffRow(it) }
+        }
+        if (entries.isNotEmpty() || extras.isNotEmpty() || date <= today) FilledTonalButton(onEdit, Modifier.padding(top = 4.dp), contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
             Icon(painterResource(R.drawable.ic_edit), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text("Modifier ce jour")
+        }
+    }
+}
+
+/** Compact line of a one-off intake. */
+@Composable
+private fun OneOffRow(e: OneOffEntry) {
+    val tone = successTone()
+    val time = formatTime(Instant.ofEpochMilli(e.row.timestamp).atZone(ZoneId.systemDefault()).toLocalTime())
+    Card(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = tone.container, contentColor = tone.content),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(time, Modifier.width(56.dp), style = MaterialTheme.typography.titleMedium, color = tone.content)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(e.item.name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                e.row.quantity?.let { Text(formatWithUnit(it, e.item.unit), style = MaterialTheme.typography.bodyMedium, color = tone.content) }
+                StatusLine("Prise ponctuelle", R.drawable.ic_check, tone.content, Modifier.padding(top = 2.dp))
+            }
         }
     }
 }
@@ -383,7 +430,14 @@ private fun DayRow(e: TodayEntry, lacking: Boolean) {
 /** Edits one day: the same cards and answers as "Aujourd'hui"; "Reporter" only makes sense for today. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DayEditor(date: LocalDate, entries: List<TodayEntry>, today: LocalDate, actions: EntryActions, onBack: () -> Unit) {
+private fun DayEditor(
+    date: LocalDate, entries: List<TodayEntry>, extras: List<OneOffEntry>, lines: List<ItemLine>,
+    today: LocalDate, actions: EntryActions, onBack: () -> Unit,
+) {
+    var adding by rememberSaveable { mutableStateOf(false) }
+    if (adding) {
+        OneOffDialog(lines, date, { id, q, at -> actions.onAddOneOff(id, q, at); adding = false }) { adding = false }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -397,8 +451,17 @@ private fun DayEditor(date: LocalDate, entries: List<TodayEntry>, today: LocalDa
             contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (entries.isEmpty()) item { Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium) }
-            entrySections(entries, actions, allowPostpone = date == today)
+            if (entries.isEmpty() && extras.isEmpty()) item { Text("Aucun rappel ce jour-là.", style = MaterialTheme.typography.bodyMedium) }
+            entrySections(entries, actions, allowPostpone = date == today, extras = extras)
+            if (date <= today && lines.isNotEmpty()) {
+                item(key = "add-one-off") {
+                    FilledTonalButton({ adding = true }, Modifier.padding(top = 8.dp), contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+                        Icon(painterResource(R.drawable.ic_add), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Ajouter une prise ponctuelle")
+                    }
+                }
+            }
         }
     }
 }
