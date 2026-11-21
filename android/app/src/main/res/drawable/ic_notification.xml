@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar: same drawing as the monochrome icon, cropped to the 21-87 area; the system tints it -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="66" android:viewportHeight="66">
+    <group android:translateX="-21" android:translateY="-21">
+    <group>
+        <clip-path android:pathData="M0,0 H108 V108 H0 Z M53,66 A17,17 0 1 0 87,66 A17,17 0 1 0 53,66 Z" />
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.65" android:pathData="M21,34 L27,28 L77,28 L71,34 Z" />
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.45" android:pathData="M71,34 L77,28 L77,60 L71,66 Z" />
+        <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M21,34 H71 V66 H21 Z M27,40 H53 V46 H27 Z M27,51 H49 V54 H27 Z" />
+    </group>
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M56.5,66 A13.5,13.5 0 1 0 83.5,66 A13.5,13.5 0 1 0 56.5,66 Z M62.50,63.50 L67.09,68.10 L77.40,56.42 L81.00,59.58 L67.31,75.10 L59.10,66.90 Z" />
+    </group>
+</vector>

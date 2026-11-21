@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three dots (Plus tab): filled when active, outlined otherwise -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8" android:fillColor="#00000000" android:pathData="M5,10.5 A1.5,1.5 0 1 0 5,13.5 A1.5,1.5 0 1 0 5,10.5 Z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8" android:fillColor="#00000000" android:pathData="M12,10.5 A1.5,1.5 0 1 0 12,13.5 A1.5,1.5 0 1 0 12,10.5 Z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8" android:fillColor="#00000000" android:pathData="M19,10.5 A1.5,1.5 0 1 0 19,13.5 A1.5,1.5 0 1 0 19,10.5 Z" />
+</vector>
