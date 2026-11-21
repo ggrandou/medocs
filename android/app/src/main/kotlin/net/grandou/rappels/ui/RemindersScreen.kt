@@ -120,21 +120,21 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
 private fun ItemCard(line: ItemLine, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val item = line.item
+    val tone = stockTone(line.level)
+    val sub = if (line.needsAttention) tone.content else c.onSurfaceVariant
     Card(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = c.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = tone.container, contentColor = tone.content),
     ) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
             Avatar(item.name)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(item.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    StockPill(line.level)
-                }
-                Text(rhythmLine(line), style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant)
-                nextLine(line)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant) }
-                stockLine(line)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.onSurface) }
+                Text(item.name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                StockStatus(line.level, tone.content, Modifier.padding(vertical = 2.dp))
+                Text(rhythmLine(line), style = MaterialTheme.typography.bodyMedium, color = sub)
+                nextLine(line)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = sub) }
+                stockLine(line)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = tone.content) }
             }
         }
     }

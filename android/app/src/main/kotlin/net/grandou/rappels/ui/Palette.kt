@@ -20,7 +20,30 @@ object IconColors {
     val Side = Color(0xFFB9D2DC)  // side of the box
 }
 
+/** Background and text colors of a status. */
+class Tone(val container: Color, val content: Color)
+
+/**
+ * Semantic status tones, outside the icon's five colors (documented exception of the charter, see AGENTS.md):
+ * green = done, yellow = postponed, orange = late, red = skipped, missed or out of stock.
+ * The status is always also written and paired with an icon: the color is never alone.
+ */
+class StatusTones(val done: Tone, val snoozed: Tone, val late: Tone, val danger: Tone)
+
 object Palette {
+    val statusLight = StatusTones(
+        done = Tone(Color(0xFFCDEBD3), Color(0xFF00210C)),
+        snoozed = Tone(Color(0xFFFFF3A0), Color(0xFF221B00)),
+        late = Tone(Color(0xFFFFCF99), Color(0xFF2E1500)),
+        danger = Tone(Color(0xFFFFB8B0), Color(0xFF410002)),
+    )
+    val statusDark = StatusTones(
+        done = Tone(Color(0xFF1E4D2B), Color(0xFFCDEBD3)),
+        snoozed = Tone(Color(0xFF5E4B00), Color(0xFFFFF3A0)),
+        late = Tone(Color(0xFF703B00), Color(0xFFFFE0C2)),
+        danger = Tone(Color(0xFF93000A), Color(0xFFFFDAD6)),
+    )
+
     val light: ColorScheme = lightColorScheme(
         primary = IconColors.Blue, onPrimary = IconColors.White,
         primaryContainer = IconColors.Top, onPrimaryContainer = Color(0xFF0C2F3D),

@@ -37,7 +37,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import net.grandou.rappels.R
-import net.grandou.rappels.engine.StockLevel
 
 /** Circle with the item's initial: generic, makes no assumption on what is tracked. Decorative. */
 @Composable
@@ -63,17 +62,6 @@ fun Pill(text: String, container: Color, content: Color, @DrawableRes icon: Int?
     ) {
         if (icon != null) Icon(painterResource(icon), contentDescription = null, Modifier.size(16.dp), tint = content)
         Text(text, style = MaterialTheme.typography.labelMedium, color = content)
-    }
-}
-
-/** Amber pill for low or out of stock; nothing otherwise. Amber flags attention, blue structures. */
-@Composable
-fun StockPill(level: StockLevel, modifier: Modifier = Modifier) {
-    val c = MaterialTheme.colorScheme
-    when (level) {
-        StockLevel.LOW -> Pill("Stock bas", c.tertiaryContainer, c.onTertiaryContainer, R.drawable.ic_warning, modifier)
-        StockLevel.OUT -> Pill("Épuisé", c.tertiary, c.onTertiary, R.drawable.ic_warning, modifier)
-        else -> Unit
     }
 }
 

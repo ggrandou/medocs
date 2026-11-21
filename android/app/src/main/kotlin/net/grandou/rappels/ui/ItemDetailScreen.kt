@@ -138,18 +138,17 @@ private fun StockCard(line: ItemLine, onPurchase: (Double) -> Unit, onAddPackage
     val c = MaterialTheme.colorScheme
     val item = line.item
     var dialog by rememberSaveable { mutableStateOf("") } // "", "add" or "correct"
-    val alert = line.needsAttention
+    val tone = stockTone(line.level)
+    val fg = tone.content
     Card(
         Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = if (alert) c.tertiaryContainer else c.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = tone.container, contentColor = fg),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val fg = if (alert) c.onTertiaryContainer else c.onSurface
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(painterResource(R.drawable.ic_inventory), contentDescription = null, Modifier.size(20.dp), tint = fg)
                 Text("Stock", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = fg)
-                // On the amber container, the pill text stays readable thanks to the label next to the icon.
-                StockPill(line.level)
+                StockStatus(line.level, fg)
             }
             if (!item.trackStock) {
                 Text("Le suivi du stock est désactivé pour ce rappel.", style = MaterialTheme.typography.bodyMedium, color = fg)
@@ -162,7 +161,10 @@ private fun StockCard(line: ItemLine, onPurchase: (Double) -> Unit, onAddPackage
                         Icon(painterResource(R.drawable.ic_add), contentDescription = null, Modifier.size(18.dp))
                         Text("Ajouter", Modifier.padding(start = 8.dp))
                     }
-                    OutlinedButton(onClick = { dialog = "correct" }) { Text("Corriger") }
+                    OutlinedButton(onClick = { dialog = "correct" }) {
+                        Icon(painterResource(R.drawable.ic_edit), contentDescription = null, Modifier.size(18.dp))
+                        Text("Corriger", Modifier.padding(start = 8.dp))
+                    }
                 }
             }
         }

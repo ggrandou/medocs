@@ -98,10 +98,23 @@ Surfaces are the icon blue, heavily darkened (same hue, about 200°), never a ne
 - Error `#FFB4AB` (text `#690005`), error container `#93000A` (text `#FFDAD6`); inverse surface `#E1E6E9` (text `#2B3338`).
 - Elevation is read through surface lightness, not shadows. The window background in `values-night/colors.xml` equals the palette background (no light flash at launch).
 
+### Status tones (documented exception)
+
+Cards carry a semantic status tone, outside the icon's five colors (`Palette.statusLight` / `statusDark`, `ui/StatusStyle.kt`). They are the only non-icon hues allowed, they never serve as brand colors, and the status is always written and paired with an icon.
+
+| Tone | Light (bg / text) | Dark (bg / text) | Use |
+|---|---|---|---|
+| done (green) | `#CDEBD3` / `#00210C` | `#1E4D2B` / `#CDEBD3` | "Aujourd'hui" card: done |
+| snoozed (yellow) | `#FFF3A0` / `#221B00` | `#5E4B00` / `#FFF3A0` | postponed |
+| late (orange) | `#FFCF99` / `#2E1500` | `#703B00` / `#FFE0C2` | waiting for an answer, time passed |
+| danger (red) | `#FFB8B0` / `#410002` | `#93000A` / `#FFDAD6` | skipped, missed; "Rappels" card out of stock |
+
+"Rappels" cards by stock: OK = neutral (`surfaceContainerLow`), low = amber (accent container), out = red (danger). Contrast of every tone is at least 7:1, checked by `PaletteTest`.
+
 ### Rules
 
 - **Amber is never a text color on a light background** (1.79:1 on white): use it as a fill with dark text, or as text on a dark background. Forbidden as text: Amber on White (1.79), Amber on Blue (3.16), Blue on Side (3.59).
-- Amber flags what needs attention (low stock, out of stock); blue structures the interface. Do not swap them.
+- Amber flags what needs attention (low stock); blue structures the interface. Do not swap them. Out of stock is red (status tone `danger`).
 - No dynamic colors (Material You): the identity follows the icon on every phone.
 - Information is never conveyed by color alone: always paired with an icon or text.
 - WCAG AA contrast (4.5:1) of both modes is checked by `PaletteTest`: rerun it after any change to `Palette.kt`.

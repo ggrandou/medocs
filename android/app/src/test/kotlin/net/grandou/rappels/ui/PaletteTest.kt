@@ -52,4 +52,13 @@ class PaletteTest {
         assertTrue(contrast(IconColors.Blue, IconColors.White) >= 4.5)
         assertTrue(contrast(IconColors.Amber, Color(0xFF1A1C1E)) >= 4.5)
     }
+
+    @Test fun statusTones() {
+        listOf("light" to Palette.statusLight, "dark" to Palette.statusDark).forEach { (mode, t) ->
+            mapOf("done" to t.done, "snoozed" to t.snoozed, "late" to t.late, "danger" to t.danger).forEach { (name, tone) ->
+                val ratio = contrast(tone.container, tone.content)
+                assertTrue("$mode / $name : contrast $ratio < 7", ratio >= 7.0)
+            }
+        }
+    }
 }

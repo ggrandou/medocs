@@ -3,6 +3,9 @@ package net.grandou.rappels.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +35,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -173,54 +179,65 @@ private fun Empty(title: String, detail: String, action: String? = null, onActio
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EntryCard(e: TodayEntry, modifier: Modifier, onDone: () -> Unit, onSkip: () -> Unit, onPostpone: () -> Unit, onUndo: () -> Unit) {
     val c = MaterialTheme.colorScheme
-    val due = e.state == EntryState.DUE
-    val fg = if (due) c.onPrimaryContainer else c.onSurface
-    val sub = if (due) c.onPrimaryContainer else c.onSurfaceVariant
+    val tone = entryTone(e.state)
+    val sub = if (e.state == EntryState.UPCOMING) c.onSurfaceVariant else tone.content
     val name = e.item.name
+    val what = "$name, ${formatTime(e.planned.time)}"
     Card(
         modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = if (due) c.primaryContainer else c.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = tone.container, contentColor = tone.content),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(e.planned.time), Modifier.width(56.dp), style = MaterialTheme.typography.titleMedium, color = fg)
-                Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, color = fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // Time, name, quantity and status read as one sentence for TalkBack; the buttons stay separate.
+            Row(Modifier.semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(formatTime(e.planned.time), Modifier.width(56.dp), style = MaterialTheme.typography.titleMedium, color = tone.content)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     e.planned.quantity?.let { Text(formatWithUnit(it, e.item.unit), style = MaterialTheme.typography.bodyMedium, color = sub) }
+                    StateLine(e, tone.content, Modifier.padding(top = 2.dp))
                 }
-                StatePill(e)
             }
-            if (e.actionable) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val doneModifier = Modifier.semantics { contentDescription = "Marquer $name comme fait" }
-                    if (due) Button(onDone, doneModifier) { Text("Fait") }
-                    else FilledTonalButton(onDone, doneModifier) { Text("Fait") }
+            // Same style for every action: a filled "Done" would read as an already validated state.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (e.actionable) {
+                    ActionButton("Fait", R.drawable.ic_check, "Fait : $what", onDone)
                     if (e.state == EntryState.DUE || e.state == EntryState.MISSED) {
-                        TextButton(onPostpone, Modifier.semantics { contentDescription = "Reporter $name de $SNOOZE_MINUTES minutes" }) { Text("Reporter") }
+                        ActionButton("Reporter", R.drawable.ic_schedule, "Reporter de $SNOOZE_MINUTES minutes : $what", onPostpone)
                     }
-                    TextButton(onSkip, Modifier.semantics { contentDescription = "Ignorer cette prise de $name" }) { Text("Ignorer") }
+                    ActionButton("Ignorer", R.drawable.ic_skip, "Ignorer : $what", onSkip)
+                } else {
+                    ActionButton("Annuler", R.drawable.ic_undo, "Annuler : $what", onUndo)
                 }
-            } else {
-                TextButton(onUndo, Modifier.semantics { contentDescription = "Annuler la réponse pour $name" }) { Text("Annuler") }
             }
         }
     }
 }
 
-/** What happened, in words and with an icon: never by color alone. */
+/** Icon + verb, tonal. Never wraps: a button narrower than its text would clip it, so the row wraps instead. */
 @Composable
-private fun StatePill(e: TodayEntry) {
-    val c = MaterialTheme.colorScheme
+private fun ActionButton(label: String, @DrawableRes icon: Int, description: String, onClick: () -> Unit) {
+    FilledTonalButton(onClick, Modifier.semantics { contentDescription = description }, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+        Icon(painterResource(icon), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text(label, maxLines = 1, softWrap = false)
+    }
+}
+
+/** What happened, in words and with an icon, in the card's text color. */
+@Composable
+private fun StateLine(e: TodayEntry, color: Color, modifier: Modifier = Modifier) {
     val zone = ZoneId.systemDefault()
     fun at(ms: Long?) = ms?.let { formatTime(Instant.ofEpochMilli(it).atZone(zone).toLocalTime()) }
     when (e.state) {
-        EntryState.DONE -> Pill("Fait" + (at(e.row?.timestamp)?.let { " à $it" } ?: ""), c.secondaryContainer, c.onSecondaryContainer, R.drawable.ic_check)
-        EntryState.SKIPPED -> Pill("Ignoré", c.secondaryContainer, c.onSecondaryContainer, R.drawable.ic_close)
-        EntryState.MISSED -> Pill("Manqué", c.tertiaryContainer, c.onTertiaryContainer, R.drawable.ic_warning)
-        EntryState.SNOOZED -> Pill("Reporté à ${at(e.row?.snoozedUntil)}", c.secondaryContainer, c.onSecondaryContainer, R.drawable.ic_schedule)
-        EntryState.DUE, EntryState.UPCOMING -> Unit
+        EntryState.UPCOMING -> Unit
+        EntryState.DUE -> StatusLine("En retard", R.drawable.ic_warning, color, modifier)
+        EntryState.SNOOZED -> StatusLine("Reporté à ${at(e.row?.snoozedUntil)}", R.drawable.ic_schedule, color, modifier)
+        EntryState.DONE -> StatusLine("Fait" + (at(e.row?.timestamp)?.let { " à $it" } ?: ""), R.drawable.ic_check, color, modifier)
+        EntryState.SKIPPED -> StatusLine("Ignoré", R.drawable.ic_skip, color, modifier)
+        EntryState.MISSED -> StatusLine("Manqué", R.drawable.ic_warning, color, modifier)
     }
 }
