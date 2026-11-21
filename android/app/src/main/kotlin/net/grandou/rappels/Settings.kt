@@ -25,4 +25,12 @@ class Settings(context: Context) {
     var lastBackup: Long
         get() = prefs.getLong("last_backup", 0L)
         set(v) = prefs.edit().putLong("last_backup", v).apply()
+
+    /**
+     * Persistent reminders (default): the notification stays until the occurrence gets an answer and comes back
+     * if swiped away. Off: an ordinary notification that the user can dismiss for good.
+     */
+    var persistentReminders: Boolean
+        get() = prefs.getBoolean("persistent_reminders", true)
+        set(v) = prefs.edit().putBoolean("persistent_reminders", v).apply()
 }

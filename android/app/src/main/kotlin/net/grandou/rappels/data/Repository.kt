@@ -61,6 +61,8 @@ class Repository(
     // --- Occurrences ---
 
     fun occurrencesOfDay(date: LocalDate) = occurrences.observeScheduledOn(date)
+    /** Journal rows of the planned occurrences of a day range, read once (alarm engine). */
+    suspend fun scheduledRows(rangeStart: LocalDate, rangeEnd: LocalDate) = occurrences.scheduledBetween(rangeStart, rangeEnd)
     fun occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate) = occurrences.observeBetween(rangeStart, rangeEnd)
     fun journal(itemId: Long) = occurrences.observeJournal(itemId)
 
@@ -93,6 +95,18 @@ class Repository(
         val id = if (existing != null) occurrences.update(occ).let { occ.id } else occurrences.insert(occ)
         align(id, occ.copy(id = id))
         id
+    }
+
+    /**
+     * Writes "missed" for a planned occurrence of a past day, unless the user answered in the meantime
+     * (a missing row or a postponed one is the only state it replaces). Returns whether it was written.
+     */
+    suspend fun markMissed(scheduleTimeId: Long, scheduledDate: LocalDate): Boolean = db.withTransaction {
+        val existing = occurrences.findScheduled(scheduleTimeId, scheduledDate)
+        if (existing != null && existing.status != Status.SNOOZED) return@withTransaction false
+        if (schedules.timeById(scheduleTimeId) == null) return@withTransaction false
+        respond(scheduleTimeId, scheduledDate, Status.MISSED)
+        true
     }
 
     /** One-off occurrence, outside any schedule (an "extra" intake). */

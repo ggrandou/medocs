@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -22,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -37,7 +39,7 @@ import net.grandou.rappels.R
 /** "Plus" (More) tab: entries grouped in a card, each one opens a full screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoreScreen(theme: ThemeMode, onBackup: () -> Unit, onRestore: () -> Unit, onAppearance: () -> Unit, onPermissions: () -> Unit, onAbout: () -> Unit) {
+fun MoreScreen(theme: ThemeMode, persistent: Boolean, onPersistent: (Boolean) -> Unit, onBackup: () -> Unit, onRestore: () -> Unit, onAppearance: () -> Unit, onPermissions: () -> Unit, onAbout: () -> Unit) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Plus") }) },
@@ -54,6 +56,12 @@ fun MoreScreen(theme: ThemeMode, onBackup: () -> Unit, onRestore: () -> Unit, on
             }
             SectionTitle("Application", Modifier.padding(top = 8.dp))
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                SwitchEntry(
+                    R.drawable.ic_perm_notifications, "Rappels persistants",
+                    if (persistent) "Le rappel reste affiché jusqu'à votre réponse" else "Le rappel peut être effacé d'un geste",
+                    persistent, onPersistent,
+                )
+                HorizontalDivider(Modifier.padding(start = 72.dp))
                 Entry(R.drawable.ic_more_appearance, "Apparence", "Mode " + theme.label.lowercase(), onAppearance)
                 HorizontalDivider(Modifier.padding(start = 72.dp))
                 Entry(R.drawable.ic_more_permissions, "Autorisations", "Notifications, alarmes, batterie", onPermissions)
@@ -61,6 +69,25 @@ fun MoreScreen(theme: ThemeMode, onBackup: () -> Unit, onRestore: () -> Unit, on
                 Entry(R.drawable.ic_more_info, "À propos", "Version, licence", onAbout)
             }
         }
+    }
+}
+
+/** Same look as [Entry], with a switch instead of the chevron; the whole row toggles. */
+@Composable
+private fun SwitchEntry(icon: Int, title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(painterResource(icon), contentDescription = null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

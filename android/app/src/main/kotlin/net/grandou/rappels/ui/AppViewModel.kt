@@ -25,6 +25,7 @@ import net.grandou.rappels.data.Schedule
 import net.grandou.rappels.data.ScheduleTime
 import net.grandou.rappels.data.ScheduleWithTimes
 import net.grandou.rappels.data.Status
+import net.grandou.rappels.reminders.ReminderEngine
 import java.time.LocalDateTime
 
 /** What the screens observe: tracked items (see [ItemLine]) and today's planned occurrences. */
@@ -67,9 +68,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             .map<AppState, AppState?> { it }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Runs a change of data, then lets the alarm engine catch up (notifications, next alarm). */
+    private fun write(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try { block() } finally { ReminderEngine.sync(getApplication()) }
+        }
+    }
+
     /** Creates an item (with its initial stock, if any); [onCreated] receives the new id. */
     fun createItem(item: Item, initialStock: Double?, onCreated: (Long) -> Unit) {
-        viewModelScope.launch {
+        write {
             val id = repo.createItem(item)
             if (item.trackStock && initialStock != null && initialStock > 0) repo.purchase(id, initialStock)
             // Navigate only once the list knows the item, otherwise its page would look like a deleted one.
@@ -79,24 +87,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateItem(item: Item) {
-        viewModelScope.launch { repo.updateItem(item) }
+        write { repo.updateItem(item) }
     }
 
     fun deleteItem(item: Item) {
-        viewModelScope.launch { repo.deleteItem(item) }
+        write { repo.deleteItem(item) }
     }
 
     fun saveSchedule(schedule: Schedule, times: List<ScheduleTime>) {
-        viewModelScope.launch { repo.saveSchedule(schedule, times) }
+        write { repo.saveSchedule(schedule, times) }
     }
 
     fun deleteSchedule(schedule: Schedule) {
-        viewModelScope.launch { repo.deleteSchedule(schedule) }
+        write { repo.deleteSchedule(schedule) }
     }
 
     /** Pauses or resumes a schedule (its times and history are kept). */
     fun setScheduleActive(sw: ScheduleWithTimes, active: Boolean) {
-        viewModelScope.launch { repo.saveSchedule(sw.schedule.copy(active = active), sw.times) }
+        write { repo.saveSchedule(sw.schedule.copy(active = active), sw.times) }
     }
 
     // --- Today's answers ---
@@ -108,22 +116,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Takes back an answer: the row disappears, and the stock it consumed comes back. */
     fun undo(e: TodayEntry) {
-        e.row?.let { viewModelScope.launch { repo.cancelOccurrence(it.id) } }
+        e.row?.let { write { repo.cancelOccurrence(it.id) } }
     }
 
     private fun answer(e: TodayEntry, status: Status, snoozedUntil: Long? = null) {
-        viewModelScope.launch { repo.respond(e.planned.scheduleTimeId, e.planned.date, status, snoozedUntil = snoozedUntil) }
+        write { repo.respond(e.planned.scheduleTimeId, e.planned.date, status, snoozedUntil = snoozedUntil) }
     }
 
     fun purchase(itemId: Long, units: Double) {
-        viewModelScope.launch { repo.purchase(itemId, units) }
+        write { repo.purchase(itemId, units) }
     }
 
     fun addPackage(itemId: Long) {
-        viewModelScope.launch { repo.addPackage(itemId) }
+        write { repo.addPackage(itemId) }
     }
 
     fun correctStock(itemId: Long, target: Double) {
-        viewModelScope.launch { repo.correctStock(itemId, target) }
+        write { repo.correctStock(itemId, target) }
     }
 }

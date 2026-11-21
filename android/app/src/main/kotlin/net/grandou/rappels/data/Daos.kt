@@ -99,6 +99,10 @@ interface OccurrenceDao {
     )
     suspend fun handledSince(since: LocalDate): List<Occurrence>
 
+    /** Planned occurrences' rows of a day range, read once (alarm engine). */
+    @Query("SELECT * FROM occurrence WHERE schedule_time_id IS NOT NULL AND scheduled_date >= :rangeStart AND scheduled_date <= :rangeEnd")
+    suspend fun scheduledBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<Occurrence>
+
     @Query("SELECT * FROM occurrence WHERE schedule_time_id IS NOT NULL AND scheduled_date = :date")
     fun observeScheduledOn(date: LocalDate): Flow<List<Occurrence>>
 

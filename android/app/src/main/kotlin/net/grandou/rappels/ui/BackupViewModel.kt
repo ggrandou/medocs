@@ -19,6 +19,7 @@ import net.grandou.rappels.data.BackupSource
 import net.grandou.rappels.data.ParsedBackup
 import net.grandou.rappels.data.PhotoStore
 import net.grandou.rappels.data.Repository
+import net.grandou.rappels.reminders.ReminderEngine
 import net.grandou.rappels.data.WrongPassword
 import java.time.LocalDate
 
@@ -160,6 +161,8 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
                 PhotoStore.decodeAll(p.data.photos).forEach { (name, bytes) -> PhotoStore.write(ctx, name, bytes) }
                 repo.replaceAll(p.data)
                 PhotoStore.clean(ctx, p.data.items.mapNotNull { it.photoPath }.toSet())
+                ReminderEngine.forgetPast(ctx)
+                ReminderEngine.sync(ctx) // arms the next alarm for the restored schedules
                 parsed = null
                 _current.value = BackupSummary(p.data)
                 RestoreState.Done(BackupSummary(p.data))

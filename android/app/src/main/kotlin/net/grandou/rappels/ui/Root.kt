@@ -30,7 +30,11 @@ private fun backOf(route: String): String {
 
 /** UI root: bottom tabs, the "Rappels" screens, and screens opened from "Plus" (More). */
 @Composable
-fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
+fun Root(
+    appVersion: String,
+    theme: ThemeMode, onTheme: (ThemeMode) -> Unit,
+    persistent: Boolean, onPersistent: (Boolean) -> Unit,
+) {
     var tab by rememberSaveable { mutableStateOf(AppTab.TODAY) }
     var subPage by rememberSaveable { mutableStateOf<SubPage?>(null) }
     var route by rememberSaveable { mutableStateOf("") }
@@ -65,7 +69,7 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                     AppTab.HISTORY -> EmptyTab("Historique")
                     AppTab.REMINDERS -> RemindersScreen(lines, { route = "item/0" }, { route = "detail/${it.item.id}" })
                     AppTab.MORE -> MoreScreen(
-                        theme,
+                        theme, persistent, onPersistent,
                         onBackup = { backupVm.resetExport(); backupVm.refreshCurrent(); subPage = SubPage.BACKUP },
                         onRestore = { backupVm.resetRestore(); backupVm.refreshCurrent(); subPage = SubPage.RESTORE },
                         onAppearance = { subPage = SubPage.APPEARANCE },
