@@ -123,6 +123,12 @@ class Repository(
             id
         }
 
+    /**
+     * Removes the `MISSED` rows of [today] and later: the engine only writes them for past days, so these come
+     * from a clock that was set forward and then back. Returns how many were removed.
+     */
+    suspend fun clearFutureMissed(today: LocalDate): Int = occurrences.deleteMissedFrom(today)
+
     /** Cancels an occurrence: the row disappears and its stock movement with it (cascade). */
     suspend fun cancelOccurrence(id: Long) = occurrences.delete(id)
 

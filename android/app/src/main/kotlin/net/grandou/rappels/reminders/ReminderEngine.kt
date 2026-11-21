@@ -71,6 +71,9 @@ object ReminderEngine {
         val activeIds = rows.map { it.item.id }.toSet()
         val schedules = repo.activeSchedules().filter { it.schedule.itemId in activeIds }
 
+        // 0. Clock set back: "missed" rows of today or later were written while it was ahead, drop them
+        repo.clearFutureMissed(today)
+
         // 1. Day change: what was left without answer before today is missed
         val lastRun = prefs.getString(KEY_LAST_RUN, null)?.let(LocalDate::parse) ?: today
         val from = maxOf(lastRun, today.minusDays(MAX_LOOKBACK_DAYS))

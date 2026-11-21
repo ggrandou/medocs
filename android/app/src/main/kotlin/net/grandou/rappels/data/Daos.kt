@@ -86,6 +86,9 @@ interface OccurrenceDao {
     @Query("DELETE FROM occurrence WHERE id = :id")
     suspend fun delete(id: Long)
 
+    @Query("DELETE FROM occurrence WHERE schedule_time_id IS NOT NULL AND status = 'MISSED' AND scheduled_date >= :date")
+    suspend fun deleteMissedFrom(date: LocalDate): Int
+
     @Query("SELECT * FROM occurrence WHERE id = :id")
     suspend fun byId(id: Long): Occurrence?
 
