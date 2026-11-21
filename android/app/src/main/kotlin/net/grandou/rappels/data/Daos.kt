@@ -63,6 +63,11 @@ interface ScheduleDao {
     @Query("SELECT * FROM schedule WHERE active = 1")
     suspend fun allActive(): List<ScheduleWithTimes>
 
+    /** Every schedule, suspended ones included (lists show them; the engine ignores them). */
+    @Transaction
+    @Query("SELECT * FROM schedule")
+    fun observeAllWithTimes(): Flow<List<ScheduleWithTimes>>
+
     @Transaction
     @Query("SELECT * FROM schedule WHERE active = 1")
     fun observeAllActive(): Flow<List<ScheduleWithTimes>>

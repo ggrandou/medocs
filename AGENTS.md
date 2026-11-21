@@ -29,12 +29,14 @@ Medical advice, analysis of the type of drug, interactions, dosage or posology: 
 
 Project **being rebuilt** on `main`. Only the UI skeleton exists, with no data at all:
 
-- 4 empty bottom tabs: **Aujourd'hui**, **Historique**, **Rappels**, **Plus** ("Rappels" is the chosen name for the former "Médicaments" tab: the list of what is tracked).
+- 4 bottom tabs: **Aujourd'hui**, **Historique** (still empty), **Rappels**, **Plus** ("Rappels" is the chosen name for the former "Médicaments" tab: the list of what is tracked).
+- **Rappels** works end to end and stays generic (no assumption on what is tracked): list (items running low first, in amber), item detail (next reminder, stock card with add / correct, rhythms with pause switch), item form (name, free unit, stock tracking, lot size, alert thresholds), schedule form (4 rhythm kinds, times with quantities, period, live summary). Navigation is a text route in `ui/Root.kt`; data comes from `AppViewModel`.
+- Pure, JVM-tested logic: `engine/RecurrenceEngine` (occurrences, next occurrence), `engine/StockCalculator` (coverage, stock level), `ui/Format` (French display).
 - **Plus**: Apparence (system / light / dark, stored in `SharedPreferences`) and À propos (placeholder text).
 - Adaptive icon, monochrome variant (Android 13+ themed icons), notification icon.
 - Graphic charter and dark theme, with a contrast test.
 
-Everything else (data, reminder engine, stock, backup, BDPM, scan, photos, onboarding) remains to be done. The **complete v1** is on the `v1_medocs` branch: use it as an example, without copying everything verbatim (`git show v1_medocs:<path>`). Its `CLAUDE.md` details its decisions.
+Everything else ("Aujourd'hui" and "Historique" screens, alarms and notifications, backup, BDPM, scan, photos, onboarding) remains to be done. The **complete v1** is on the `v1_medocs` branch: use it as an example, without copying everything verbatim (`git show v1_medocs:<path>`). Its `CLAUDE.md` details its decisions.
 
 ## Repository layout
 

@@ -37,6 +37,7 @@ class Repository(
     // --- Schedules ---
 
     fun schedulesOfItem(itemId: Long) = schedules.observeForItem(itemId)
+    fun observeSchedules() = schedules.observeAllWithTimes()
     suspend fun activeSchedules() = schedules.allActive()
 
     /**
