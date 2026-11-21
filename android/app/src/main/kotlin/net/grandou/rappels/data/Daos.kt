@@ -45,6 +45,12 @@ interface ScheduleDao {
     @Query("DELETE FROM schedule_time WHERE id = :id")
     suspend fun deleteTime(id: Long)
 
+    @Query("SELECT * FROM schedule_time WHERE id = :id")
+    suspend fun timeById(id: Long): ScheduleTime?
+
+    @Query("SELECT * FROM schedule_time WHERE schedule_id = :scheduleId")
+    suspend fun timesOfSchedule(scheduleId: Long): List<ScheduleTime>
+
     @Transaction
     @Query("SELECT * FROM schedule WHERE id = :id")
     suspend fun byId(id: Long): ScheduleWithTimes?
