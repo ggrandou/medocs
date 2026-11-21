@@ -37,8 +37,9 @@ object StockCalculator {
 
     /**
      * Simulates the planned doses from [from] on and finds when [stock] no longer covers one.
-     * Only occurrences at or after [from] are consumed: earlier ones already have their answer
-     * (and movement) or are handled by the occurrence flow.
+     * Only occurrences at or after [from] are consumed, except those for which [exclude] is true:
+     * already answered, their movement is already in [stock]. Pass the start of the day as [from]
+     * and today's answered occurrences as [exclude] to also count today's pending doses.
      * Returns null if no dose with a quantity is planned within [horizonDays] (nothing to simulate).
      */
     fun coverage(
@@ -46,11 +47,12 @@ object StockCalculator {
         schedules: List<ScheduleWithTimes>,
         from: LocalDateTime,
         horizonDays: Int = DEFAULT_HORIZON_DAYS,
+        exclude: (PlannedOccurrence) -> Boolean = { false },
     ): Coverage? {
         val today = from.toLocalDate()
         val doses = RecurrenceEngine
             .occurrencesBetween(schedules, today, today.plusDays(horizonDays.toLong()))
-            .filter { it.dateTime >= from && (it.quantity ?: 0.0) > 0 }
+            .filter { it.dateTime >= from && !exclude(it) && (it.quantity ?: 0.0) > 0 }
         if (doses.isEmpty()) return null
         var remaining = stock
         for (dose in doses) {
@@ -72,10 +74,11 @@ object StockCalculator {
         stock: Double,
         schedules: List<ScheduleWithTimes>,
         from: LocalDateTime,
+        exclude: (PlannedOccurrence) -> Boolean = { false },
     ): StockLevel {
         if (!item.trackStock) return StockLevel.NOT_TRACKED
         if (stock <= EPSILON) return StockLevel.OUT
-        val cov = coverage(stock, schedules.filter { it.schedule.itemId == item.id }, from)
+        val cov = coverage(stock, schedules.filter { it.schedule.itemId == item.id }, from, exclude = exclude)
         if (cov == null) {
             val threshold = item.thresholdUnits
             return if (threshold != null && stock < threshold) StockLevel.LOW else StockLevel.OK

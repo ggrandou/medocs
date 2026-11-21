@@ -8,6 +8,7 @@ import net.grandou.rappels.engine.PlannedOccurrence
 import net.grandou.rappels.engine.RecurrenceEngine
 import net.grandou.rappels.engine.StockCalculator
 import net.grandou.rappels.engine.StockLevel
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /** Everything a list row or the detail screen shows about an item, computed once from the database. */
@@ -24,15 +25,26 @@ data class ItemLine(
     val needsAttention: Boolean get() = level == StockLevel.LOW || level == StockLevel.OUT
 }
 
-fun buildLine(row: ItemWithStock, allSchedules: List<ScheduleWithTimes>, now: LocalDateTime): ItemLine {
+/**
+ * [handled]: today's planned occurrences already answered, as (schedule time id, date). Their stock movement is
+ * already in the stock, and they are not "next". Pending doses of today count in the coverage.
+ */
+fun buildLine(
+    row: ItemWithStock,
+    allSchedules: List<ScheduleWithTimes>,
+    now: LocalDateTime,
+    handled: Set<Pair<Long, LocalDate>> = emptySet(),
+): ItemLine {
     val mine = allSchedules.filter { it.schedule.itemId == row.item.id }.sortedBy { it.schedule.id }
-    val cov = if (row.item.trackStock) StockCalculator.coverage(row.stock, mine, now) else null
+    val exclude = { o: PlannedOccurrence -> (o.scheduleTimeId to o.date) in handled }
+    val startOfDay = now.toLocalDate().atStartOfDay()
+    val cov = if (row.item.trackStock) StockCalculator.coverage(row.stock, mine, startOfDay, exclude = exclude) else null
     return ItemLine(
         item = row.item,
         stock = row.stock,
-        level = StockCalculator.level(row.item, row.stock, mine, now),
+        level = StockCalculator.level(row.item, row.stock, mine, startOfDay, exclude),
         coverage = cov,
         schedules = mine,
-        next = RecurrenceEngine.next(mine, now),
+        next = RecurrenceEngine.next(mine, now, exclude = exclude),
     )
 }

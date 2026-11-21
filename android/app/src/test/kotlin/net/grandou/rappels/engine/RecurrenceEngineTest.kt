@@ -207,4 +207,11 @@ class RecurrenceEngineTest {
         val sw = withTimes(sched("2026-03-01", end = "2026-03-02"), "08:00" to 1.0)
         assertNull(RecurrenceEngine.next(listOf(sw), LocalDateTime.parse("2026-03-02T09:00")))
     }
+
+    @Test fun nextSkipsExcludedOccurrences() {
+        val sw = withTimes(sched("2026-03-01"), "08:00" to 1.0, "20:00" to 1.0)
+        val from = LocalDateTime.parse("2026-03-05T07:00")
+        val answered = { o: PlannedOccurrence -> o.date == d("2026-03-05") && o.time == LocalTime.of(8, 0) }
+        assertEquals(LocalDateTime.parse("2026-03-05T20:00"), RecurrenceEngine.next(listOf(sw), from, exclude = answered)?.dateTime)
+    }
 }

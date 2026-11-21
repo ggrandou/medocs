@@ -38,6 +38,9 @@ private val LONG_DAY_FORMAT = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.
 fun formatDate(d: LocalDate): String = d.format(DATE_FORMAT)
 fun formatTime(t: LocalTime): String = t.format(TIME_FORMAT)
 
+/** "Samedi 21 novembre". */
+fun formatLongDay(d: LocalDate): String = d.format(LONG_DAY_FORMAT).replaceFirstChar { it.uppercase() }
+
 fun dayName(d: DayOfWeek): String = d.getDisplayName(TextStyle.FULL, Locale.FRANCE)
 fun dayShort(d: DayOfWeek): String = d.getDisplayName(TextStyle.SHORT, Locale.FRANCE)
 

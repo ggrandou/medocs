@@ -107,4 +107,22 @@ class StockCalculatorTest {
         val other = daily("08:00" to 5.0, itemId = 2)
         assertEquals(StockLevel.OK, StockCalculator.level(item(), 3.0, listOf(other), now))
     }
+
+    @Test fun excludedOccurrencesAreNotConsumedAgain() {
+        // Start of day; the 08:00 dose is answered (its movement is already in the stock of 9 units).
+        // Remaining doses: 20:00 on day 1, then 2 per day: 9 units last until 5 March evening included.
+        val s = listOf(daily("08:00" to 1.0, "20:00" to 1.0))
+        val startOfDay = at("2026-03-01T00:00")
+        val answered = { o: PlannedOccurrence -> o.date == LocalDate.parse("2026-03-01") && o.time == LocalTime.of(8, 0) }
+        assertEquals(LocalDate.parse("2026-03-06"), StockCalculator.coverage(9.0, s, startOfDay, exclude = answered)!!.runOutDate)
+        // Without the exclusion the answered dose would be counted a second time.
+        assertEquals(LocalDate.parse("2026-03-05"), StockCalculator.coverage(9.0, s, startOfDay)!!.runOutDate)
+    }
+
+    @Test fun pendingEarlierDoseOfTodayIsCounted() {
+        // 08:00 dose not answered yet at 09:00: counted, because the day starts at midnight.
+        val s = listOf(daily("08:00" to 1.0))
+        val c = StockCalculator.coverage(2.0, s, at("2026-03-01T00:00"))!!
+        assertEquals(LocalDate.parse("2026-03-03"), c.runOutDate)
+    }
 }

@@ -35,7 +35,8 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     var subPage by rememberSaveable { mutableStateOf<SubPage?>(null) }
     var route by rememberSaveable { mutableStateOf("") }
     val vm: AppViewModel = viewModel()
-    val lines by vm.lines.collectAsStateWithLifecycle()
+    val state by vm.state.collectAsStateWithLifecycle()
+    val lines = state?.lines
 
     BackHandler(enabled = subPage != null) { subPage = null }
     BackHandler(enabled = subPage == null && route.isNotEmpty()) { route = backOf(route) }
@@ -53,7 +54,11 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
         null -> Scaffold(bottomBar = { BottomBar(tab) { tab = it } }) { padding ->
             androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
                 when (tab) {
-                    AppTab.TODAY -> EmptyTab("Aujourd'hui")
+                    AppTab.TODAY -> TodayScreen(
+                        state,
+                        onDone = vm::markDone, onSkip = vm::skip, onPostpone = vm::postpone, onUndo = vm::undo,
+                        onOpenReminders = { tab = AppTab.REMINDERS },
+                    )
                     AppTab.HISTORY -> EmptyTab("Historique")
                     AppTab.REMINDERS -> RemindersScreen(lines, { route = "item/0" }, { route = "detail/${it.item.id}" })
                     AppTab.MORE -> MoreScreen(theme, { subPage = SubPage.APPEARANCE }, { subPage = SubPage.PERMISSIONS }, { subPage = SubPage.ABOUT })

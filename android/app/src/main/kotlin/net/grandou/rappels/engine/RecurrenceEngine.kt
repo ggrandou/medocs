@@ -74,17 +74,21 @@ object RecurrenceEngine {
     fun occurrencesOn(schedules: List<ScheduleWithTimes>, date: LocalDate): List<PlannedOccurrence> =
         occurrencesBetween(schedules, date, date)
 
-    /** First occurrence strictly after [after], or null if none within [horizonDays]. */
+    /**
+     * First occurrence strictly after [after], or null if none within [horizonDays].
+     * Occurrences for which [exclude] is true (already answered) are skipped.
+     */
     fun next(
         schedules: List<ScheduleWithTimes>,
         after: LocalDateTime,
         horizonDays: Int = DEFAULT_HORIZON_DAYS,
+        exclude: (PlannedOccurrence) -> Boolean = { false },
     ): PlannedOccurrence? {
         // Day by day over the window, not per schedule: stops at the first day that has a candidate.
         var date = after.toLocalDate()
         val last = date.plusDays(horizonDays.toLong())
         while (date <= last) {
-            val found = occurrencesOn(schedules, date).firstOrNull { it.dateTime > after }
+            val found = occurrencesOn(schedules, date).firstOrNull { it.dateTime > after && !exclude(it) }
             if (found != null) return found
             date = date.plusDays(1)
         }
