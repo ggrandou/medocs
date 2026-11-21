@@ -9,9 +9,6 @@ import net.grandou.rappels.engine.RecurrenceEngine
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-/** Without an answer after this delay, an occurrence is "missed". */
-const val MISSED_AFTER_MINUTES = 120L
-
 /** "Postpone" delays the reminder by this much. */
 const val SNOOZE_MINUTES = 30L
 
@@ -19,13 +16,13 @@ const val SNOOZE_MINUTES = 30L
 enum class EntryState {
     /** Planned later today. */
     UPCOMING,
-    /** Time has come (or a postponement has ended): waiting for an answer. */
+    /** Time has come (or a postponement has ended): waiting for an answer. Stays so, shown as late, until the end of the day. */
     DUE,
     /** Postponed, the new reminder is still ahead. */
     SNOOZED,
     DONE,
     SKIPPED,
-    /** No answer long after the time (row written by the engine, or just derived from the clock). */
+    /** Left without answer past its day: a row written by the engine, never derived for today. */
     MISSED,
 }
 
@@ -60,7 +57,6 @@ fun buildToday(
     return RecurrenceEngine.occurrencesOn(schedules, now.toLocalDate()).mapNotNull { planned ->
         val item = byId[planned.itemId] ?: return@mapNotNull null
         val row = rowByKey[planned.scheduleTimeId to planned.date]
-        val late = now >= planned.dateTime.plusMinutes(MISSED_AFTER_MINUTES)
         val state = when (row?.status) {
             Status.DONE -> EntryState.DONE
             Status.SKIPPED -> EntryState.SKIPPED
@@ -68,7 +64,6 @@ fun buildToday(
             Status.SNOOZED -> if ((row.snoozedUntil ?: 0L) <= nowMillis) EntryState.DUE else EntryState.SNOOZED
             null -> when {
                 planned.dateTime > now -> EntryState.UPCOMING
-                late -> EntryState.MISSED
                 else -> EntryState.DUE
             }
         }

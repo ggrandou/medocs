@@ -35,11 +35,12 @@ class TodayModelTest {
     private fun states(now: String, vararg rows: Occurrence) =
         buildToday(listOf(item), listOf(schedule), rows.toList(), at(now), ZoneOffset.UTC).map { it.state }
 
-    @Test fun upcomingThenDueThenMissed() {
+    @Test fun upcomingThenDueAllDay() {
         assertEquals(listOf(EntryState.UPCOMING, EntryState.UPCOMING), states("07:00"))
         assertEquals(listOf(EntryState.DUE, EntryState.UPCOMING), states("08:00"))
-        assertEquals(listOf(EntryState.DUE, EntryState.UPCOMING), states("09:59"))
-        assertEquals(listOf(EntryState.MISSED, EntryState.UPCOMING), states("10:00"))
+        // A late occurrence stays due until the end of the day: it is not "missed" before the next day.
+        assertEquals(listOf(EntryState.DUE, EntryState.UPCOMING), states("19:59"))
+        assertEquals(listOf(EntryState.DUE, EntryState.DUE), states("23:59"))
     }
 
     @Test fun answersFromTheJournal() {
