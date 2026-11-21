@@ -37,7 +37,7 @@ import net.grandou.rappels.R
 /** "Plus" (More) tab: entries grouped in a card, each one opens a full screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoreScreen(theme: ThemeMode, onAppearance: () -> Unit, onAbout: () -> Unit) {
+fun MoreScreen(theme: ThemeMode, onAppearance: () -> Unit, onPermissions: () -> Unit, onAbout: () -> Unit) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("Plus") }) },
@@ -48,6 +48,8 @@ fun MoreScreen(theme: ThemeMode, onAppearance: () -> Unit, onAbout: () -> Unit) 
         ) {
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Entry(R.drawable.ic_more_appearance, "Apparence", "Mode " + theme.label.lowercase(), onAppearance)
+                HorizontalDivider(Modifier.padding(start = 72.dp))
+                Entry(R.drawable.ic_more_permissions, "Autorisations", "Notifications, alarmes, batterie", onPermissions)
                 HorizontalDivider(Modifier.padding(start = 72.dp))
                 Entry(R.drawable.ic_more_info, "À propos", "Version, licence", onAbout)
             }

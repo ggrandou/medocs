@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import net.grandou.rappels.ThemeMode
 
-private enum class SubPage { APPEARANCE, ABOUT }
+private enum class SubPage { APPEARANCE, PERMISSIONS, ABOUT }
 
 /** UI root: bottom tabs and screens opened from "Plus" (More). */
 @Composable
@@ -24,6 +24,7 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
 
     when (subPage) {
         SubPage.APPEARANCE -> AppearanceScreen(theme, onTheme) { subPage = null }
+        SubPage.PERMISSIONS -> PermissionsScreen { subPage = null }
         SubPage.ABOUT -> AboutScreen(appVersion) { subPage = null }
         null -> Scaffold(bottomBar = { BottomBar(tab) { tab = it } }) { padding ->
             androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
@@ -31,7 +32,7 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                     AppTab.TODAY -> EmptyTab("Aujourd'hui")
                     AppTab.HISTORY -> EmptyTab("Historique")
                     AppTab.REMINDERS -> EmptyTab("Rappels")
-                    AppTab.MORE -> MoreScreen(theme, { subPage = SubPage.APPEARANCE }, { subPage = SubPage.ABOUT })
+                    AppTab.MORE -> MoreScreen(theme, { subPage = SubPage.APPEARANCE }, { subPage = SubPage.PERMISSIONS }, { subPage = SubPage.ABOUT })
                 }
             }
         }
