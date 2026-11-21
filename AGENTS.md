@@ -23,7 +23,7 @@ The previous version ("Mes Médocs", `net.grandou.medocs`) was rejected by Googl
 
 ### Out of scope, do not add
 
-Medical advice, analysis of the type of drug, interactions, dosage or posology: this would push the app into medical-device qualification. A warning must remain displayed in the app (onboarding and "À propos"); it is temporarily removed from "À propos" and will come back.
+Medical advice, analysis of the type of drug, interactions, dosage or posology: this would push the app into medical-device qualification. A warning must remain displayed in the app (onboarding and "À propos").
 
 ## Current state
 

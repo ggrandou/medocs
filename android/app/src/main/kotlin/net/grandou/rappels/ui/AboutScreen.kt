@@ -20,6 +20,14 @@ fun AboutScreen(appVersion: String, onBack: () -> Unit) {
             Text("Version $appVersion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Des rappels qui demandent si c'est fait, et qui surveillent ce qui s'épuise.")
 
+            SectionTitle("Avertissement")
+            Text(
+                "Si l'application est utilisée pour des rappels de médicaments, gardez à l'esprit qu'elle n'est pas un dispositif médical. " +
+                    "Elle ne donne aucun conseil : elle ne vérifie ni les doses, " +
+                    "ni les interactions, ni les contre-indications, et ne remplace ni votre médecin ni votre pharmacien. " +
+                    "Elle vous rappelle ce que vous avez vous-même programmé.",
+            )
+
             SectionTitle("Vos données")
             Text("Tout reste sur ce téléphone : pas d'accès à internet, pas de compte, pas d'analytique.")
             SectionTitle("Licence")
