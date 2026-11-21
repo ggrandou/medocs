@@ -30,19 +30,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.annotation.DrawableRes
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -66,15 +64,13 @@ fun TodayScreen(
     actions: EntryActions,
     onOpenReminders: () -> Unit,
 ) {
-    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var adding by rememberSaveable { mutableStateOf(false) }
     if (adding && state != null) {
         OneOffDialog(state.lines, LocalDate.now(), { id, q, at -> actions.onAddOneOff(id, q, at); adding = false }) { adding = false }
     }
     Scaffold(
-        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = { LargeTopAppBar(title = { Text("Aujourd'hui") }, scrollBehavior = scroll) },
+        topBar = { TopAppBar(title = { Text("Aujourd'hui") }) },
         floatingActionButton = {
             if (state?.lines?.isNotEmpty() == true) {
                 ExtendedFloatingActionButton(
