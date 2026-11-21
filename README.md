@@ -21,6 +21,33 @@ Elle demande si c'est fait (« fait / reporter / sauter »), surveille ce qui s'
 
 Rien d'autre à installer : Gradle (8.13) est téléchargé par le wrapper `gradlew`, ainsi que le plugin Android (8.13.2) et Kotlin (2.2.10). Android Studio n'est pas nécessaire.
 
+## Installer les dépendances sans Android Studio
+
+**En une commande** : `scripts/install-deps.sh` fait tout ce qui suit (JDK, outils en ligne de commande, licences, composants du SDK, `android/local.properties`). Il peut être relancé sans risque : ce qui est déjà installé n'est pas touché. `ANDROID_HOME` change le dossier du SDK (défaut : `~/Android/Sdk`), `SKIP_JDK=1` saute le JDK. Le détail manuel :
+
+**JDK 21** : par le gestionnaire de paquets (sous Debian ou Ubuntu : `sudo apt install openjdk-21-jdk`).
+
+**SDK Android** : il s'installe avec les outils en ligne de commande (`cmdline-tools`), qui fournissent `sdkmanager`.
+
+1. Télécharger « Command line tools only » (`commandlinetools-linux-<n>_latest.zip`) sur <https://developer.android.com/studio#command-line-tools-only>.
+2. L'extraire pour obtenir `~/Android/Sdk/cmdline-tools/latest/bin/sdkmanager` (le dossier `latest/` est obligatoire) :
+   ```
+   mkdir -p ~/Android/Sdk/cmdline-tools
+   unzip commandlinetools-linux-*_latest.zip -d ~/Android/Sdk/cmdline-tools
+   mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
+   ```
+3. Installer les composants et accepter les licences :
+   ```
+   export PATH=$PATH:~/Android/Sdk/cmdline-tools/latest/bin
+   sdkmanager --licenses
+   sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+   ```
+4. Déclarer le chemin dans `android/local.properties` (voir ci-dessus).
+
+Autres commandes utiles : `sdkmanager --list` (installé et disponible), `sdkmanager --update` (mise à jour). Si une plateforme ou des build-tools manquent, Gradle les télécharge de lui-même une fois les licences acceptées.
+
+**Le reste** (Gradle, plugin Android, Kotlin, Compose et leurs bibliothèques) est téléchargé automatiquement au premier build et mis en cache dans `~/.gradle`.
+
 ## Construire
 
 Toutes les commandes se lancent depuis le dossier `android/` :
