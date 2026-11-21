@@ -33,4 +33,14 @@ class Settings(context: Context) {
     var persistentReminders: Boolean
         get() = prefs.getBoolean("persistent_reminders", true)
         set(v) = prefs.edit().putBoolean("persistent_reminders", v).apply()
+
+    /** Version of the start-up carousel the user has gone through; 0 = never. */
+    var onboardingVersion: Int
+        get() = prefs.getInt("onboarding_version", 0)
+        set(v) = prefs.edit().putInt("onboarding_version", v).apply()
+
+    /** Version of the medical warning the user has accepted; 0 = never. */
+    var warningVersion: Int
+        get() = prefs.getInt("warning_version", 0)
+        set(v) = prefs.edit().putInt("warning_version", v).apply()
 }

@@ -34,6 +34,7 @@ fun Root(
     appVersion: String,
     theme: ThemeMode, onTheme: (ThemeMode) -> Unit,
     persistent: Boolean, onPersistent: (Boolean) -> Unit,
+    onReplayOnboarding: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(AppTab.TODAY) }
     var subPage by rememberSaveable { mutableStateOf<SubPage?>(null) }
@@ -75,7 +76,7 @@ fun Root(
                         onBackup = { backupVm.resetExport(); backupVm.refreshCurrent(); subPage = SubPage.BACKUP },
                         onRestore = { backupVm.resetRestore(); backupVm.refreshCurrent(); subPage = SubPage.RESTORE },
                         onAppearance = { subPage = SubPage.APPEARANCE },
-                        onPermissions = { subPage = SubPage.PERMISSIONS }, onAbout = { subPage = SubPage.ABOUT },
+                        onPermissions = { subPage = SubPage.PERMISSIONS }, onIntro = onReplayOnboarding, onAbout = { subPage = SubPage.ABOUT },
                     )
                 }
             }
