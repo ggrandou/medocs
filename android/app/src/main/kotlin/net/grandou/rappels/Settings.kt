@@ -20,4 +20,9 @@ class Settings(context: Context) {
     var theme: ThemeMode
         get() = ThemeMode.fromKey(prefs.getString("theme", null))
         set(v) = prefs.edit().putString("theme", v.key).apply()
+
+    /** Instant (epoch ms) of the last backup made from this phone; 0 = never. */
+    var lastBackup: Long
+        get() = prefs.getLong("last_backup", 0L)
+        set(v) = prefs.edit().putLong("last_backup", v).apply()
 }

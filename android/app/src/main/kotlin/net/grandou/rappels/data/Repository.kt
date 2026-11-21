@@ -146,4 +146,21 @@ class Repository(
             stock.insert(StockMovement(itemId = itemId, delta = delta, type = MovementType.CORRECTION, timestamp = now()))
         }
     }
+
+    // --- Backup ---
+
+    /** Consistent snapshot of all the user's data (a single read transaction). Photos are added by the caller. */
+    suspend fun exportAll(): BackupData = db.withTransaction {
+        BackupData(items.all(), schedules.allSchedules(), schedules.allTimes(), occurrences.all(), stock.all())
+    }
+
+    /** Replaces ALL the data by the backup's, atomically (all or nothing). */
+    suspend fun replaceAll(d: BackupData) = db.withTransaction {
+        items.deleteAll() // cascade: schedules, times, occurrences, movements
+        items.insertAll(d.items)
+        schedules.insertSchedules(d.schedules)
+        schedules.insertTimes(d.scheduleTimes)
+        occurrences.insertAll(d.occurrences)
+        stock.insertAll(d.stockMovements)
+    }
 }

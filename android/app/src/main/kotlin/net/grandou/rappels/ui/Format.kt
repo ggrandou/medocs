@@ -113,3 +113,9 @@ fun periodText(s: Schedule, today: LocalDate): String {
 
 /** "1 jour", "12 jours". */
 fun formatDays(n: Int): String = if (n <= 1) "$n jour" else "$n jours"
+
+/** "21/11/2026 à 14:05" for an instant (epoch ms), in the phone's time zone. */
+fun formatInstant(epochMs: Long): String {
+    val dt = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(epochMs), java.time.ZoneId.systemDefault())
+    return formatDate(dt.toLocalDate()) + " à " + formatTime(dt.toLocalTime())
+}

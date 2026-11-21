@@ -22,6 +22,13 @@ import net.grandou.rappels.engine.StockLevel
 private fun statusTones(): StatusTones =
     if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Palette.statusDark else Palette.statusLight
 
+/** Tone of a successful result (green) and of a destructive or failed one (red): always paired with an icon and words. */
+@Composable
+fun successTone(): Tone = statusTones().done
+
+@Composable
+fun dangerTone(): Tone = statusTones().danger
+
 /** Card tone of an occurrence of today: green done, yellow postponed, orange late, red skipped or missed. */
 @Composable
 fun entryTone(state: EntryState): Tone {

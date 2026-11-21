@@ -13,7 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import net.grandou.rappels.ThemeMode
 
-private enum class SubPage { APPEARANCE, PERMISSIONS, ABOUT }
+private enum class SubPage { BACKUP, RESTORE, APPEARANCE, PERMISSIONS, ABOUT }
 
 /**
  * Screens of the "Rappels" tab, encoded as text so that they survive rotation:
@@ -35,6 +35,7 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     var subPage by rememberSaveable { mutableStateOf<SubPage?>(null) }
     var route by rememberSaveable { mutableStateOf("") }
     val vm: AppViewModel = viewModel()
+    val backupVm: BackupViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val lines = state?.lines
 
@@ -48,6 +49,8 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
     }
 
     when (subPage) {
+        SubPage.BACKUP -> BackupScreen(backupVm) { subPage = null }
+        SubPage.RESTORE -> RestoreScreen(backupVm) { subPage = null }
         SubPage.APPEARANCE -> AppearanceScreen(theme, onTheme) { subPage = null }
         SubPage.PERMISSIONS -> PermissionsScreen { subPage = null }
         SubPage.ABOUT -> AboutScreen(appVersion) { subPage = null }
@@ -61,7 +64,13 @@ fun Root(appVersion: String, theme: ThemeMode, onTheme: (ThemeMode) -> Unit) {
                     )
                     AppTab.HISTORY -> EmptyTab("Historique")
                     AppTab.REMINDERS -> RemindersScreen(lines, { route = "item/0" }, { route = "detail/${it.item.id}" })
-                    AppTab.MORE -> MoreScreen(theme, { subPage = SubPage.APPEARANCE }, { subPage = SubPage.PERMISSIONS }, { subPage = SubPage.ABOUT })
+                    AppTab.MORE -> MoreScreen(
+                        theme,
+                        onBackup = { backupVm.resetExport(); backupVm.refreshCurrent(); subPage = SubPage.BACKUP },
+                        onRestore = { backupVm.resetRestore(); backupVm.refreshCurrent(); subPage = SubPage.RESTORE },
+                        onAppearance = { subPage = SubPage.APPEARANCE },
+                        onPermissions = { subPage = SubPage.PERMISSIONS }, onAbout = { subPage = SubPage.ABOUT },
+                    )
                 }
             }
         }

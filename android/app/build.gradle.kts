@@ -47,4 +47,6 @@ dependencies {
     ksp("androidx.room:room-compiler:2.8.4")
 
     testImplementation("junit:junit:4.13.2")
+    // The SDK's org.json is a non-executable stub in local JVM tests
+    testImplementation("org.json:json:20240303")
 }

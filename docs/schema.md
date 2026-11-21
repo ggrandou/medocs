@@ -145,4 +145,8 @@ A `CONSUMPTION` movement is linked to its occurrence: deleting the occurrence, o
 
 ## Backup
 
-All tables are serialized in the encrypted backup with their original identifiers, and foreign-key consistency is checked before any write. Any table or column added must enter the backup format and its version.
+All tables are serialized in the encrypted backup with their original identifiers, and foreign-key consistency is checked before any write (`data/Backup.kt`). Any table or column added must enter the backup format and its version.
+
+- **File**: `RAPPELS1 | salt (16) | IV (12) | ciphertext + GCM tag`; PBKDF2-HMAC-SHA256 (210,000 iterations) → AES-256-GCM, the magic is authenticated. The plaintext is JSON: `format` = `rappels`, `version` = 1 (file format, independent of the Room version), `createdAt`, one array per table (`items`, `schedules`, `scheduleTimes`, `occurrences`, `stockMovements`, camelCase fields) and `photos` (file name → Base64 JPEG).
+- **Restore replaces everything**, in one transaction (`Repository.replaceAll`). The file is decrypted, read and checked first (a wrong password or a bad file changes nothing), and the user reviews its content before confirming.
+- **v1 files ("Mes Médocs") are read and converted**: magic `MEDOCS1` (same cipher parameters), JSON `format` = `medocs`, French field names. Mapping: `medicament` → `item` (`type` = `medication`, `packaging` = "boîte" when a box size exists, `track_stock` = 1, `cip13` → `reference`, `substances` → `composition`, `forme` → `form`); `planning` → `schedule` (`QUOTIDIEN` → `PERIODIC` every 1 day, `JOURS_SEMAINE` → `WEEKDAYS` every week, `TOUS_LES_N_JOURS` → `PERIODIC` every N days); `planning_heure` → `schedule_time`; `prise` → `occurrence` (`REPORTEE` → `SNOOZED`, `PRISE` → `DONE`, `SAUTEE` → `SKIPPED`, `MANQUEE` → `MISSED`); `stock_mouvement` → `stock_movement` (`ACHAT` → `PURCHASE`, `PRISE` → `CONSUMPTION`). Identifiers are kept.
