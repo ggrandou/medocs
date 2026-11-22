@@ -1,5 +1,7 @@
 package net.grandou.rappels.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -62,9 +66,15 @@ import java.time.LocalTime
 import java.time.ZoneOffset
 
 /** The four ways to describe a rhythm, as the user sees them. */
-private enum class Mode(val label: String) {
-    EVERY("Tous les…"), WEEKDAYS("Jours fixes"), RANK("Dans le mois"), CYCLE("Cycle"),
+private enum class Mode(val label: String, val description: String) {
+    EVERY("Tous les…", "Tous les jours, tous les 3 jours, toutes les 2 semaines, tous les mois…"),
+    WEEKDAYS("Jours fixes", "Certains jours de la semaine, par exemple le lundi et le jeudi."),
+    RANK("Dans le mois", "Un jour précis du mois, par exemple le 1er lundi."),
+    CYCLE("Cycle", "Une période active puis une pause, par exemple 21 jours sur 28."),
 }
+
+/** Steps of the creation wizard. */
+private enum class ScheduleStep { KIND, DETAILS, TIMES, PERIOD }
 
 /** A time of the schedule being edited; [id] is kept so that its history stays linked. Saved as text. */
 private data class TimeRow(val id: Long, val time: LocalTime, val quantity: String) {
@@ -139,29 +149,28 @@ fun ScheduleFormScreen(
     )
 
     val quantitiesOk = rows.all { it.quantity.isBlank() || parseDecimal(it.quantity)?.let { q -> q > 0 } == true }
-    val problem: String? = when {
-        rows.isEmpty() -> "Ajoutez au moins une heure."
-        !quantitiesOk -> "Une quantité n'est pas valide."
+    val detailsProblem: String? = when {
         m == Mode.EVERY && everyN.toIntOrNull()?.let { it >= 1 } != true -> "Indiquez un nombre supérieur à 0."
         m == Mode.WEEKDAYS && days == 0 -> "Choisissez au moins un jour."
         m == Mode.WEEKDAYS && weekInterval.toIntOrNull()?.let { it >= 1 } != true -> "Indiquez un nombre de semaines supérieur à 0."
         m == Mode.RANK && monthInterval.toIntOrNull()?.let { it >= 1 } != true -> "Indiquez un nombre de mois supérieur à 0."
         m == Mode.CYCLE && activeDays.toIntOrNull()?.let { it >= 1 } != true -> "Indiquez la durée de la phase active."
         m == Mode.CYCLE && pauseDays.toIntOrNull()?.let { it >= 0 } != true -> "Indiquez la durée de la pause."
-        endDate != null && endDate < startDate -> "La date de fin précède la date de début."
         else -> null
     }
+    val timesProblem: String? = when {
+        rows.isEmpty() -> "Ajoutez au moins une heure."
+        !quantitiesOk -> "Une quantité n'est pas valide."
+        else -> null
+    }
+    val periodProblem: String? =
+        if (endDate != null && endDate < startDate) "La date de fin précède la date de début." else null
+    val problem = detailsProblem ?: timesProblem ?: periodProblem
+    val save = {
+        onSave(draft, rows.sortedBy { it.time }.map { ScheduleTime(id = it.id, scheduleId = old?.id ?: 0, time = it.time, quantity = parseDecimal(it.quantity)) })
+    }
 
-    FormScaffold(
-        title = if (existing == null) "Nouveau rythme" else "Modifier le rythme",
-        onBack = onBack,
-        saveLabel = "Enregistrer",
-        saveEnabled = problem == null,
-        onSave = {
-            onSave(draft, rows.sortedBy { it.time }.map { ScheduleTime(id = it.id, scheduleId = old?.id ?: 0, time = it.time, quantity = parseDecimal(it.quantity)) })
-        },
-    ) {
-        // Live summary
+    val summaryCard = @Composable {
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(item.name, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -169,64 +178,63 @@ fun ScheduleFormScreen(
                 if (rows.isNotEmpty()) Text(rows.sortedBy { it.time }.joinToString(" · ") { formatTime(it.time) }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
-
-        // Rhythm
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionTitle("Rythme")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Mode.entries.forEach { o ->
-                    FilterChip(
-                        selected = o == m, onClick = { mode = o.name }, label = { Text(o.label) },
-                        leadingIcon = if (o == m) ({ Icon(painterResource(R.drawable.ic_check), contentDescription = null, Modifier.size(18.dp)) }) else null,
-                    )
-                }
-            }
-            when (m) {
-                Mode.EVERY -> {
-                    OutlinedTextField(
-                        everyN, { everyN = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Tous les") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(IntervalUnit.DAY to "jours", IntervalUnit.WEEK to "semaines", IntervalUnit.MONTH to "mois", IntervalUnit.YEAR to "ans").forEach { (u, l) ->
-                            FilterChip(selected = everyUnit == u.name, onClick = { everyUnit = u.name }, label = { Text(l) })
-                        }
-                    }
-                }
-                Mode.WEEKDAYS -> {
-                    DayRow(selected = { days and it != 0 }, onToggle = { days = days xor it })
-                    OutlinedTextField(
-                        weekInterval, { weekInterval = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Une semaine sur") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), supportingText = { Text("1 = toutes les semaines") },
-                    )
-                }
-                Mode.RANK -> {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(1 to "1er", 2 to "2e", 3 to "3e", 4 to "4e", -1 to "Dernier").forEach { (r, l) ->
-                            FilterChip(selected = rank == r, onClick = { rank = r }, label = { Text(l) })
-                        }
-                    }
-                    DayRow(selected = { rankDay == it }, onToggle = { rankDay = it })
-                    OutlinedTextField(
-                        monthInterval, { monthInterval = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Tous les … mois") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), supportingText = { Text("1 = chaque mois") },
-                    )
-                }
-                Mode.CYCLE -> {
-                    OutlinedTextField(
-                        activeDays, { activeDays = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Jours actifs") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                    OutlinedTextField(
-                        pauseDays, { pauseDays = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Jours de pause") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = { Text("Le cycle recommence ensuite, depuis la date de début.") },
-                    )
-                }
+    }
+    val modeChips = @Composable {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Mode.entries.forEach { o ->
+                FilterChip(
+                    selected = o == m, onClick = { mode = o.name }, label = { Text(o.label) },
+                    leadingIcon = if (o == m) ({ Icon(painterResource(R.drawable.ic_check), contentDescription = null, Modifier.size(18.dp)) }) else null,
+                )
             }
         }
-
-        // Times
+    }
+    val modeDetails = @Composable {
+        when (m) {
+            Mode.EVERY -> {
+                OutlinedTextField(
+                    everyN, { everyN = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Tous les") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(IntervalUnit.DAY to "jours", IntervalUnit.WEEK to "semaines", IntervalUnit.MONTH to "mois", IntervalUnit.YEAR to "ans").forEach { (u, l) ->
+                        FilterChip(selected = everyUnit == u.name, onClick = { everyUnit = u.name }, label = { Text(l) })
+                    }
+                }
+            }
+            Mode.WEEKDAYS -> {
+                DayRow(selected = { days and it != 0 }, onToggle = { days = days xor it })
+                OutlinedTextField(
+                    weekInterval, { weekInterval = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Une semaine sur") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), supportingText = { Text("1 = toutes les semaines") },
+                )
+            }
+            Mode.RANK -> {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1 to "1er", 2 to "2e", 3 to "3e", 4 to "4e", -1 to "Dernier").forEach { (r, l) ->
+                        FilterChip(selected = rank == r, onClick = { rank = r }, label = { Text(l) })
+                    }
+                }
+                DayRow(selected = { rankDay == it }, onToggle = { rankDay = it })
+                OutlinedTextField(
+                    monthInterval, { monthInterval = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Tous les … mois") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), supportingText = { Text("1 = chaque mois") },
+                )
+            }
+            Mode.CYCLE -> {
+                OutlinedTextField(
+                    activeDays, { activeDays = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Jours actifs") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                OutlinedTextField(
+                    pauseDays, { pauseDays = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Jours de pause") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    supportingText = { Text("Le cycle recommence ensuite, depuis la date de début.") },
+                )
+            }
+        }
+    }
+    val timesSection = @Composable {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("Heures")
             rows.forEachIndexed { i, row ->
@@ -255,8 +263,8 @@ fun ScheduleFormScreen(
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
-        // Period
+    }
+    val periodSection = @Composable {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle("Période")
             DateRow("Début", formatDate(startDate)) { dateDialog = "start" }
@@ -269,14 +277,73 @@ fun ScheduleFormScreen(
                 }
             }
         }
+    }
 
-        if (problem != null) Text(problem, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-
-        if (old != null) {
+    if (existing != null) {
+        FormScaffold(
+            title = "Modifier le rythme", onBack = onBack, saveLabel = "Enregistrer", saveEnabled = problem == null, onSave = save,
+        ) {
+            summaryCard()
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionTitle("Rythme")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { modeChips() }
+                modeDetails()
+            }
+            timesSection()
+            periodSection()
+            if (problem != null) Text(problem, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             TextButton(onClick = { confirmDelete = true }, Modifier.fillMaxWidth()) {
                 Icon(painterResource(R.drawable.ic_delete), contentDescription = null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                 Text("Supprimer ce rythme", Modifier.padding(start = 8.dp), color = MaterialTheme.colorScheme.error)
             }
+        }
+    } else {
+        // Wizard: one question per screen.
+        var stepIndex by rememberSaveable { mutableStateOf(0) }
+        val steps = ScheduleStep.entries
+        val index = stepIndex.coerceIn(0, steps.lastIndex)
+        val step = steps[index]
+        val last = index == steps.lastIndex
+        val stepProblem = when (step) {
+            ScheduleStep.KIND -> null
+            ScheduleStep.DETAILS -> detailsProblem
+            ScheduleStep.TIMES -> timesProblem
+            ScheduleStep.PERIOD -> periodProblem
+        }
+        val goBack = { if (index > 0) stepIndex = index - 1 else onBack() }
+        BackHandler(onBack = goBack)
+
+        FormScaffold(
+            title = "Nouveau rythme", onBack = goBack,
+            saveLabel = if (last) "Enregistrer" else "Suivant", saveEnabled = stepProblem == null,
+            onSave = { if (last) save() else stepIndex = index + 1 },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Étape ${index + 1} sur ${steps.size}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(progress = { (index + 1f) / steps.size }, Modifier.fillMaxWidth())
+            }
+            Text(
+                when (step) {
+                    ScheduleStep.KIND -> "Quel type de rythme ?"
+                    ScheduleStep.DETAILS -> when (m) {
+                        Mode.EVERY -> "Tous les combien ?"
+                        Mode.WEEKDAYS -> "Quels jours ?"
+                        Mode.RANK -> "Quel jour du mois ?"
+                        Mode.CYCLE -> "Quel cycle ?"
+                    }
+                    ScheduleStep.TIMES -> "À quelle heure ?"
+                    ScheduleStep.PERIOD -> "Sur quelle période ?"
+                },
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            if (step != ScheduleStep.KIND) summaryCard()
+            when (step) {
+                ScheduleStep.KIND -> Mode.entries.forEach { o -> ModeCard(o, selected = o == m) { mode = o.name } }
+                ScheduleStep.DETAILS -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { modeDetails() }
+                ScheduleStep.TIMES -> timesSection()
+                ScheduleStep.PERIOD -> periodSection()
+            }
+            if (stepProblem != null && step != ScheduleStep.KIND) Text(stepProblem, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
     }
 
@@ -345,6 +412,26 @@ private fun DayRow(selected: (Int) -> Boolean, onToggle: (Int) -> Unit) {
                     Text(dayName(d).first().uppercase(), style = MaterialTheme.typography.labelLarge, color = if (on) c.onPrimary else c.onSurface)
                 }
             }
+        }
+    }
+}
+
+/** A selectable card describing one kind of rhythm, with a check mark when chosen. */
+@Composable
+private fun ModeCard(mode: Mode, selected: Boolean, onClick: () -> Unit) {
+    val c = MaterialTheme.colorScheme
+    Card(
+        Modifier.fillMaxWidth().selectable(selected, role = Role.RadioButton, onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = if (selected) c.primaryContainer else c.surfaceContainerLow),
+        border = if (selected) BorderStroke(2.dp, c.primary) else BorderStroke(1.dp, c.outlineVariant),
+    ) {
+        Row(Modifier.padding(16.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(mode.label, style = MaterialTheme.typography.titleMedium, color = if (selected) c.onPrimaryContainer else c.onSurface)
+                Text(mode.description, style = MaterialTheme.typography.bodyMedium, color = if (selected) c.onPrimaryContainer else c.onSurfaceVariant)
+            }
+            if (selected) Icon(painterResource(R.drawable.ic_check), contentDescription = "Choisi", tint = c.primary)
         }
     }
 }

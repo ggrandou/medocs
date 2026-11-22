@@ -35,7 +35,7 @@ import net.grandou.rappels.data.Item
 private val UNIT_SUGGESTIONS = listOf("unité", "dose", "pièce", "paire", "ml", "g")
 
 /** Steps of the creation wizard, in order. Stock-related steps are skipped when stock is not tracked. */
-private enum class Step(val title: String, val question: String) {
+private enum class ItemStep(val title: String, val question: String) {
     NAME("Nom", "Que voulez-vous ne pas oublier ?"),
     UNIT("Unité", "Qu'est-ce qu'on compte ?"),
     STOCK("Stock", "Voulez-vous suivre le stock ?"),
@@ -130,16 +130,16 @@ fun ItemFormScreen(existing: Item?, onBack: () -> Unit, onSave: (Item, Double?) 
     }
 
     // Wizard: the steps actually shown depend on whether the stock is tracked.
-    val steps = if (trackStock) Step.entries else listOf(Step.NAME, Step.UNIT, Step.STOCK)
+    val steps = if (trackStock) ItemStep.entries else listOf(ItemStep.NAME, ItemStep.UNIT, ItemStep.STOCK)
     val index = stepIndex.coerceIn(0, steps.lastIndex)
     val step = steps[index]
     val last = index == steps.lastIndex
     val stepValid = when (step) {
-        Step.NAME -> name.isNotBlank()
-        Step.UNIT -> unit.isNotBlank()
-        Step.STOCK -> !trackStock || stockOk
-        Step.PACKAGING -> packagingOk
-        Step.ALERT -> alertOk
+        ItemStep.NAME -> name.isNotBlank()
+        ItemStep.UNIT -> unit.isNotBlank()
+        ItemStep.STOCK -> !trackStock || stockOk
+        ItemStep.PACKAGING -> packagingOk
+        ItemStep.ALERT -> alertOk
     }
     val goBack = { if (index > 0) stepIndex = index - 1 else onBack() }
     BackHandler(onBack = goBack)
@@ -156,11 +156,11 @@ fun ItemFormScreen(existing: Item?, onBack: () -> Unit, onSave: (Item, Double?) 
         }
         Text(step.question, style = MaterialTheme.typography.headlineSmall)
         when (step) {
-            Step.NAME -> nameField()
-            Step.UNIT -> unitField()
-            Step.STOCK -> stockFields()
-            Step.PACKAGING -> packagingFields()
-            Step.ALERT -> alertFields()
+            ItemStep.NAME -> nameField()
+            ItemStep.UNIT -> unitField()
+            ItemStep.STOCK -> stockFields()
+            ItemStep.PACKAGING -> packagingFields()
+            ItemStep.ALERT -> alertFields()
         }
     }
 }
