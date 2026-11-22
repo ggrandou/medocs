@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -120,10 +121,12 @@ fun HistoryScreen(
 ) {
     val today = LocalDate.now()
     var monthText by rememberSaveable { mutableStateOf(YearMonth.from(today).toString()) }
-    var selectedText by rememberSaveable { mutableStateOf(today.toString()) }
+    // Empty = no day selected (the default, also after a change of month).
+    var selectedText by rememberSaveable { mutableStateOf("") }
+    var showLegend by rememberSaveable { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
     val month = YearMonth.parse(monthText)
-    val selected = LocalDate.parse(selectedText)
+    val selected: LocalDate? = selectedText.takeIf { it.isNotEmpty() }?.let(LocalDate::parse)
 
     val rows by remember(month) { rowsBetween(month.atDay(1), month.atEndOfMonth()) }
         .collectAsStateWithLifecycle(emptyList())
@@ -135,7 +138,7 @@ fun HistoryScreen(
         else buildOneOffs(state.lines.map { it.item }, extraRows)
             .groupBy { Instant.ofEpochMilli(it.row.timestamp).atZone(zone).toLocalDate() }
     }
-    val extras = extrasByDate[selected].orEmpty()
+    val extras = selected?.let { extrasByDate[it] }.orEmpty()
     val days: Map<LocalDate, List<TodayEntry>> = remember(state, rows, month) {
         if (state == null) emptyMap() else {
             val items = state.lines.map { it.item }
@@ -148,7 +151,8 @@ fun HistoryScreen(
             }
         }
     }
-    val entries = days[selected].orEmpty().takeIf { selected.year == month.year && selected.month == month.month }
+    val entries = if (selected == null) emptyList()
+    else days[selected].orEmpty().takeIf { selected.year == month.year && selected.month == month.month }
         ?: if (state != null) buildDay(state.lines.map { it.item }, state.lines.flatMap { it.schedules }, emptyList(), selected, LocalDateTime.now()) else emptyList()
 
     val runOut = remember(state) {
@@ -157,14 +161,22 @@ fun HistoryScreen(
 
     fun showMonth(m: YearMonth) {
         monthText = m.toString()
-        // Keep the selection inside the month shown: same day number, or the 1st / today.
-        selectedText = (if (m == YearMonth.from(today)) today else m.atDay(minOf(selected.dayOfMonth, m.lengthOfMonth()))).toString()
+        selectedText = ""
     }
 
     BackHandler(enabled = editing) { editing = false }
-    if (editing) {
+    if (editing && selected != null) {
         DayEditor(selected, entries, extras, state?.lines.orEmpty(), today, actions) { editing = false }
         return
+    }
+
+    if (showLegend) {
+        AlertDialog(
+            onDismissRequest = { showLegend = false },
+            title = { Text("Légende") },
+            text = { Legend() },
+            confirmButton = { TextButton({ showLegend = false }) { Text("Fermer") } },
+        )
     }
 
     Scaffold(
@@ -190,7 +202,7 @@ fun HistoryScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "calendar") {
-                // Framed: the header, the grid and the legend read as one block.
+                // Framed: the header and the grid read as one block.
                 Card(
                     Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -198,25 +210,41 @@ fun HistoryScreen(
                 ) {
                     Column(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         MonthHeader(
-                            month, today,
+                            month,
                             onPrevious = { showMonth(month.minusMonths(1)) },
                             onNext = { showMonth(month.plusMonths(1)) },
-                            onToday = { monthText = YearMonth.from(today).toString(); selectedText = today.toString() },
                         )
                         MonthGrid(month, today, selected, days, extrasByDate, runOut) { selectedText = it.toString() }
-                        Legend()
+                        // Fixed-height row: the calendar never changes size.
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            HelpButton { showLegend = true }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(
+                                onClick = { monthText = YearMonth.from(today).toString(); selectedText = "" },
+                                enabled = month != YearMonth.from(today),
+                            ) {
+                                Icon(painterResource(R.drawable.ic_event), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Aujourd'hui")
+                            }
+                        }
                     }
                 }
             }
             item(key = "day") {
-                DayDetail(selected, today, entries, extras, runOut, onEdit = { editing = true })
+                if (selected == null) {
+                    Text(
+                        "Touchez un jour pour voir son détail.", Modifier.fillMaxWidth().padding(top = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+                    )
+                } else DayDetail(selected, today, entries, extras, runOut, onEdit = { editing = true })
             }
         }
     }
 }
 
 @Composable
-private fun MonthHeader(month: YearMonth, today: LocalDate, onPrevious: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
+private fun MonthHeader(month: YearMonth, onPrevious: () -> Unit, onNext: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onPrevious) {
             Icon(painterResource(R.drawable.ic_chevron), contentDescription = "Mois précédent", Modifier.rotate(180f))
@@ -227,9 +255,19 @@ private fun MonthHeader(month: YearMonth, today: LocalDate, onPrevious: () -> Un
         )
         IconButton(onNext) { Icon(painterResource(R.drawable.ic_chevron), contentDescription = "Mois suivant") }
     }
-    if (month != YearMonth.from(today)) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            TextButton(onToday) { Text("Revenir à aujourd'hui") }
+}
+
+/** Small round "?" that opens the legend (48 dp touch target, 28 dp drawing). */
+@Composable
+private fun HelpButton(onClick: () -> Unit) {
+    val c = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "Légende du calendrier" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(28.dp).border(1.5.dp, c.onSurfaceVariant, CircleShape), contentAlignment = Alignment.Center) {
+            Text("?", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = c.onSurfaceVariant)
         }
     }
 }
@@ -238,7 +276,7 @@ private fun MonthHeader(month: YearMonth, today: LocalDate, onPrevious: () -> Un
 private fun MonthGrid(
     month: YearMonth,
     today: LocalDate,
-    selected: LocalDate,
+    selected: LocalDate?,
     days: Map<LocalDate, List<TodayEntry>>,
     extrasByDate: Map<LocalDate, List<OneOffEntry>>,
     runOut: Map<Long, LocalDate>,
