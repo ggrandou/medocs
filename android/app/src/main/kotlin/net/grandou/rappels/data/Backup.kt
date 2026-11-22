@@ -1,5 +1,6 @@
 package net.grandou.rappels.data
 
+import net.grandou.rappels.engine.RecurrenceEngine
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -171,7 +172,7 @@ object BackupJson {
 
     private fun readV1(o: JSONObject): BackupData {
         val photos = readPhotos(o)
-        return BackupData(
+        return reattachDetached(BackupData(
             items = o.getJSONArray("medicaments").objects().map { m ->
                 val perBox = m.doubleOrNull("unitesParBoite")
                 val photo = m.stringOrNull("photoPath")?.takeIf { it in photos }
@@ -232,7 +233,39 @@ object BackupJson {
                 )
             },
             photos = photos,
-        )
+        ))
+    }
+
+    /**
+     * v1 detached an intake from its schedule time when the time was removed or replaced (`planningHeureId` null, date and
+     * time kept), and counted it through its date. The current history is derived from the schedules, so such a row would
+     * be ignored and its planned occurrence shown as missed. Each one is re-attached to the closest free schedule time of
+     * the same item and day; when none fits, it becomes a one-off intake (no date, no time), which keeps it visible.
+     */
+    internal fun reattachDetached(d: BackupData): BackupData {
+        val detached = d.occurrences.filter { it.scheduleTimeId == null && it.scheduledDate != null }
+        if (detached.isEmpty()) return d
+        val schedules = d.schedules.map { s -> ScheduleWithTimes(s, d.scheduleTimes.filter { it.scheduleId == s.id }) }
+        val taken = d.occurrences.mapNotNull { r -> r.scheduleTimeId?.let { it to r.scheduledDate } }.toMutableSet()
+        val fixed = HashMap<Long, Occurrence>()
+        for ((key, rows) in detached.groupBy { it.itemId to it.scheduledDate!! }) {
+            val (itemId, date) = key
+            val free = RecurrenceEngine.occurrencesOn(schedules.filter { it.schedule.itemId == itemId }, date)
+                .filter { (it.scheduleTimeId to date) !in taken }.toMutableList()
+            val pending = rows.toMutableList()
+            // Closest pairs first (by time of day), each row and each schedule time used once.
+            while (pending.isNotEmpty() && free.isNotEmpty()) {
+                val (row, slot) = pending.flatMap { r -> free.map { r to it } }.minBy { (r, f) ->
+                    r.scheduledTime?.let { kotlin.math.abs(java.time.Duration.between(it, f.time).toMinutes()) } ?: 0L
+                }
+                fixed[row.id] = row.copy(scheduleTimeId = slot.scheduleTimeId)
+                taken += slot.scheduleTimeId to date
+                pending -= row
+                free -= slot
+            }
+            pending.forEach { fixed[it.id] = it.copy(scheduledDate = null, scheduledTime = null) }
+        }
+        return d.copy(occurrences = d.occurrences.map { fixed[it.id] ?: it })
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }

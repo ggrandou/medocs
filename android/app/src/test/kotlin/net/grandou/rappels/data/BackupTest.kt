@@ -134,6 +134,35 @@ class BackupTest {
         assertEquals(mapOf("abc-1.jpg" to "AAAA"), d.photos)
     }
 
+    /** The user's case: a schedule edited on its first day, so its intakes were detached (10:00 and 19:30, schedule now 10:00 and 19:00). */
+    @Test fun v1DetachedIntakesAreReattachedToTheClosestScheduleTime() {
+        val d = BackupData(
+            items = listOf(Item(id = 1, name = "A")),
+            schedules = listOf(Schedule(id = 1, itemId = 1, startDate = LocalDate.of(2026, 11, 14))),
+            scheduleTimes = listOf(
+                ScheduleTime(id = 7, scheduleId = 1, time = LocalTime.of(10, 0), quantity = 1.0),
+                ScheduleTime(id = 8, scheduleId = 1, time = LocalTime.of(19, 0), quantity = 1.0),
+            ),
+            occurrences = listOf(
+                Occurrence(id = 13, itemId = 1, scheduledDate = LocalDate.of(2026, 11, 14), scheduledTime = LocalTime.of(19, 30), status = Status.DONE, timestamp = 2),
+                Occurrence(id = 14, itemId = 1, scheduledDate = LocalDate.of(2026, 11, 14), scheduledTime = LocalTime.of(10, 0), status = Status.DONE, timestamp = 1),
+                // A third one the schedule cannot take: kept as a one-off.
+                Occurrence(id = 15, itemId = 1, scheduledDate = LocalDate.of(2026, 11, 14), scheduledTime = LocalTime.of(21, 0), status = Status.DONE, timestamp = 3),
+                // Before the schedule starts: also a one-off.
+                Occurrence(id = 16, itemId = 1, scheduledDate = LocalDate.of(2026, 11, 13), scheduledTime = LocalTime.of(10, 0), status = Status.DONE, timestamp = 0),
+            ),
+            stockMovements = emptyList(),
+        )
+        val byId = BackupJson.reattachDetached(d).occurrences.associateBy { it.id }
+        assertEquals(8L, byId.getValue(13).scheduleTimeId)
+        assertEquals(7L, byId.getValue(14).scheduleTimeId)
+        for (id in listOf(15L, 16L)) {
+            assertNull(byId.getValue(id).scheduleTimeId)
+            assertNull(byId.getValue(id).scheduledDate)
+            assertNull(byId.getValue(id).scheduledTime)
+        }
+    }
+
     @Test fun v1WithoutPhotosSectionStillReads() {
         val p = BackupJson.parse(v1.replace("\"photos\":{\"abc-1.jpg\":\"AAAA\"}", "\"x\":0")).data
         assertNull(p.items[0].photoPath)
