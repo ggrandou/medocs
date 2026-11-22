@@ -159,7 +159,7 @@ private fun PageTips() {
     Illustration(Drawing.FREE_DAY)
     Title("Quelques conseils")
     Point("Comptez votre stock au départ", "Les alertes de stock bas en dépendent.")
-    Point("Une prise hors planning ?", "Le bouton « + Prise ponctuelle » de l'onglet Aujourd'hui la note et décompte le stock.")
+    Point("Entrée hors planning ?", "Le bouton « Entrée hors planning » de l'onglet Aujourd'hui le note et décompte le stock.")
     Point("Un oubli ? Corrigez après coup", "L'onglet Historique permet de modifier n'importe quel jour.")
     Point("Faites une sauvegarde", "Menu Plus : c'est le seul moyen de garder vos données si vous changez de téléphone.")
 }

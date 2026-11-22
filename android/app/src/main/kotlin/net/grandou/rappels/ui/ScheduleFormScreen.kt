@@ -251,7 +251,7 @@ fun ScheduleFormScreen(
                 Text("Ajouter une heure", Modifier.padding(start = 8.dp))
             }
             Text(
-                "La quantité est retirée du stock à chaque prise confirmée. Laissez-la vide pour ne rien retirer.",
+                "La quantité est retirée du stock à chaque rappel confirmé. Laissez-la vide pour ne rien retirer.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

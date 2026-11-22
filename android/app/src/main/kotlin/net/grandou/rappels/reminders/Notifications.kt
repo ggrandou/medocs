@@ -112,8 +112,8 @@ object Notifications {
         val title = if (line.level == StockLevel.OUT) "Bientôt épuisé : ${item.name}" else "Stock faible : ${item.name}"
         val days = line.coverage?.days
         val text = "Il reste ${formatWithUnit(line.stock.coerceAtLeast(0.0), item.unit)}" + when {
-            line.stock <= 0.0 -> ", plus rien pour la prochaine prise"
-            days == 0 -> ", pas assez pour la prochaine prise"
+            line.stock <= 0.0 -> ", plus rien pour le prochain rappel"
+            days == 0 -> ", pas assez pour le prochain rappel"
             days != null -> " (environ ${formatDays(days)})"
             else -> ""
         }

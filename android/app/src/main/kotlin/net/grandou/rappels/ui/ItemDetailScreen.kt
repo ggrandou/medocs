@@ -178,7 +178,7 @@ private fun coverageText(line: ItemLine): String? {
     val days = cov.days ?: return "Suffisant pour plus d'un an"
     val until = cov.runOutDate?.let { " (jusqu'au ${formatDate(it.minusDays(1).coerceAtLeast(LocalDate.now()))})" }.orEmpty()
     return when {
-        line.level == StockLevel.OUT -> "Pas assez pour la prochaine prise"
+        line.level == StockLevel.OUT -> "Pas assez pour le prochain rappel"
         else -> "Suffisant pour environ ${formatDays(days)}$until"
     }
 }

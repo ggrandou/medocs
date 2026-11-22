@@ -55,7 +55,7 @@ fun parseTime(s: String): LocalTime? {
 fun defaultQuantity(line: ItemLine): Double =
     line.schedules.flatMap { it.times }.firstNotNullOfOrNull { it.quantity?.takeIf { q -> q > 0 } } ?: 1.0
 
-/** Cards of one-off intakes ("Hors planning"), shared by "Aujourd'hui" and the day editor. */
+/** Cards of one-off entries ("Hors planning"), shared by "Aujourd'hui" and the day editor. */
 fun LazyListScope.oneOffSection(list: List<OneOffEntry>, onCancel: (OneOffEntry) -> Unit) {
     if (list.isEmpty()) return
     item(key = "h-extras") { SectionTitle("Hors planning", Modifier.padding(top = 8.dp)) }
@@ -76,10 +76,10 @@ private fun OneOffCard(e: OneOffEntry, modifier: Modifier, onCancel: (OneOffEntr
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(e.item.name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     e.row.quantity?.let { Text(formatWithUnit(it, e.item.unit), style = MaterialTheme.typography.bodyMedium, color = tone.content) }
-                    StatusLine("Prise ponctuelle à $time", R.drawable.ic_check, tone.content, Modifier.padding(top = 2.dp))
+                    StatusLine("Entrée hors planning à $time", R.drawable.ic_check, tone.content, Modifier.padding(top = 2.dp))
                 }
             }
-            ActionButton("Annuler", R.drawable.ic_undo, "Annuler la prise ponctuelle : ${e.item.name}, $time") { onCancel(e) }
+            ActionButton("Annuler", R.drawable.ic_undo, "Annuler l'entrée hors planning : ${e.item.name}, $time") { onCancel(e) }
         }
     }
 }
@@ -116,7 +116,7 @@ fun OneOffDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Prise ponctuelle") },
+        title = { Text("Entrée hors planning") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(formatLongDay(date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

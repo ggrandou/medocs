@@ -76,7 +76,7 @@ fun TodayScreen(
                 ExtendedFloatingActionButton(
                     onClick = { adding = true },
                     icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                    text = { Text("Prise ponctuelle") },
+                    text = { Text("Entrée hors planning") },
                 )
             }
         },

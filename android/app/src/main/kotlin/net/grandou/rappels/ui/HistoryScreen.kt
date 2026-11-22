@@ -280,7 +280,7 @@ private fun DayCell(date: LocalDate, today: LocalDate, selected: Boolean, entrie
     val tones = entries.map { sliceColor(it.state) } + List(extraCount) { c.primary }
     val label = "${date.format(SHORT_DAY_FORMAT)}" + (if (date == today) ", aujourd'hui" else "") +
         (daySummary(entries).takeIf { it.isNotEmpty() }?.let { ", $it" } ?: ", aucun rappel") +
-        (if (extraCount > 0) ", $extraCount ${if (extraCount > 1) "prises ponctuelles" else "prise ponctuelle"}" else "") +
+        (if (extraCount > 0) ", $extraCount hors planning" else "") +
         (if (lacking) ", stock insuffisant" else "")
     // Outer ring = today; filled disc = selected day; the slices sit inside. Each is readable alone and together.
     Box(
@@ -338,7 +338,7 @@ private fun Legend() {
     ) {
         listOf(
             "Fait" to EntryState.DONE, "En retard" to EntryState.DUE, "Reporté" to EntryState.SNOOZED,
-            "Ignoré ou manqué" to EntryState.MISSED, "À venir" to EntryState.UPCOMING, "Prise ponctuelle" to null,
+            "Ignoré ou manqué" to EntryState.MISSED, "À venir" to EntryState.UPCOMING, "Hors planning" to null,
         ).forEach { (text, state) ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(12.dp).clip(CircleShape).background(if (state == null) c.primary else sliceColor(state)))
@@ -372,7 +372,7 @@ private fun DayDetail(date: LocalDate, today: LocalDate, entries: List<TodayEntr
         }
         if (extras.isNotEmpty()) {
             Text(
-                "${extras.size} ${if (extras.size > 1) "prises ponctuelles" else "prise ponctuelle"}",
+                "${extras.size} hors planning",
                 Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium, color = sub,
             )
             extras.forEach { OneOffRow(it) }
@@ -400,7 +400,7 @@ private fun OneOffRow(e: OneOffEntry) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(e.item.name, style = MaterialTheme.typography.titleMedium, color = tone.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 e.row.quantity?.let { Text(formatWithUnit(it, e.item.unit), style = MaterialTheme.typography.bodyMedium, color = tone.content) }
-                StatusLine("Prise ponctuelle", R.drawable.ic_check, tone.content, Modifier.padding(top = 2.dp))
+                StatusLine("Entrée hors planning", R.drawable.ic_check, tone.content, Modifier.padding(top = 2.dp))
             }
         }
     }
@@ -464,7 +464,7 @@ private fun DayEditor(
                     FilledTonalButton({ adding = true }, Modifier.padding(top = 8.dp), contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
                         Icon(painterResource(R.drawable.ic_add), contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Ajouter une prise ponctuelle")
+                        Text("Ajouter une entrée hors planning")
                     }
                 }
             }
